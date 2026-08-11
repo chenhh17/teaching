@@ -95,9 +95,17 @@ export function getSlideImageQueries(
     .filter(Boolean)
     .slice(0, 3)
   const hint = illustrationHint(slide.illustration)
+  const chapterHint = context?.chapterTitleEn?.replace(/\s+/g, ' ').trim()
 
   const parts = [title, ...keywordParts]
   if (hint) parts.push(hint)
+  else if (
+    chapterHint &&
+    chapterHint !== title &&
+    !title.toLowerCase().includes(chapterHint.toLowerCase())
+  ) {
+    parts.push(chapterHint)
+  }
 
   const derived = parts.join(' ').replace(/\s+/g, ' ').trim()
   return derived ? [derived] : []
