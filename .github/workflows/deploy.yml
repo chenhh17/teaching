@@ -29,9 +29,11 @@ jobs:
 
       - name: Package release
         run: |
-          mkdir -p release/teaching/frontend release/teaching/nginx
+          mkdir -p release/teaching/frontend/dist release/teaching/frontend/server release/teaching/nginx release/teaching/scripts
           rsync -a frontend/dist/ release/teaching/frontend/dist/
+          rsync -a frontend/server/ release/teaching/frontend/server/
           cp nginx/teaching.conf release/teaching/nginx/teaching.conf
+          cp scripts/teaching-topic-image.service release/teaching/scripts/teaching-topic-image.service
           tar -czf teaching.tar.gz -C release teaching
 
       - name: Upload to server
@@ -57,6 +59,11 @@ jobs:
             tar -xzf /tmp/teaching.tar.gz -C "$HOME"
             mkdir -p "$HOME/controller/nginx/services.d"
             cp "$HOME/teaching/nginx/teaching.conf" "$HOME/controller/nginx/services.d/teaching.conf"
+            mkdir -p "$HOME/.config/systemd/user"
+            cp "$HOME/teaching/scripts/teaching-topic-image.service" "$HOME/.config/systemd/user/teaching-topic-image.service"
+            systemctl --user daemon-reload
+            systemctl --user enable --now teaching-topic-image.service
+            systemctl --user restart teaching-topic-image.service
             chmod o+x "$HOME" || true
             chmod -R a+rX "$HOME/teaching" || true
             if sudo -n true 2>/dev/null; then

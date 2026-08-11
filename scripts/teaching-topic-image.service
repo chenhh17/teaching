@@ -1,0 +1,16 @@
+[Unit]
+Description=teaching topic-image API
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/teaching/frontend/server
+ExecStart=/usr/bin/env node %h/teaching/frontend/server/topicImageServer.mjs
+Environment=TEACHING_IMAGE_HOST=127.0.0.1
+Environment=TEACHING_IMAGE_PORT=9010
+Restart=always
+RestartSec=3
+MemoryMax=180M
+
+[Install]
+WantedBy=default.target

@@ -119,8 +119,15 @@ function preloadImageFile(url: string) {
   img.src = url
 }
 
+function topicImageApiRoot() {
+  const base = import.meta.env.BASE_URL || '/'
+  return `${base.endsWith('/') ? base : `${base}/`}api`
+}
+
 async function requestTopicImage(query: string): Promise<TopicImageResult> {
-  const res = await fetch(`/api/topic-image?q=${encodeURIComponent(query)}`)
+  const res = await fetch(
+    `${topicImageApiRoot()}/topic-image?q=${encodeURIComponent(query)}`,
+  )
   if (!res.ok) {
     throw new Error(`No image for “${query}”`)
   }
