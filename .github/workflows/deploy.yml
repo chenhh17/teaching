@@ -1,0 +1,68 @@
+name: Deploy teaching
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          NODE_OPTIONS: --max-old-space-size=768
+        run: |
+          npm ci || npm install
+          npm run build
+
+      - name: Package release
+        run: |
+          mkdir -p release/teaching/frontend release/teaching/nginx
+          rsync -a frontend/dist/ release/teaching/frontend/dist/
+          cp nginx/teaching.conf release/teaching/nginx/teaching.conf
+          tar -czf teaching.tar.gz -C release teaching
+
+      - name: Upload to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          source: teaching.tar.gz
+          target: /tmp
+
+      - name: Extract and publish
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          script: |
+            set -e
+            mkdir -p "$HOME/teaching"
+            tar -xzf /tmp/teaching.tar.gz -C "$HOME"
+            mkdir -p "$HOME/controller/nginx/services.d"
+            cp "$HOME/teaching/nginx/teaching.conf" "$HOME/controller/nginx/services.d/teaching.conf"
+            chmod o+x "$HOME" || true
+            chmod -R a+rX "$HOME/teaching" || true
+            if sudo -n true 2>/dev/null; then
+              sudo nginx -t
+              sudo systemctl reload nginx
+            else
+              echo "Skipped nginx reload (no passwordless sudo). teaching.conf is installed under controller/nginx/services.d/"
+            fi
+            rm -f /tmp/teaching.tar.gz
