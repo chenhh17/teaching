@@ -1,11 +1,10 @@
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import {
-  getAllSlides,
   getChapterCode,
   getChaptersByPart,
   getCourseStats,
   parts,
+  preloadChapter,
 } from '../data/chapters'
 import { getResumePath } from '../lib/courseProgress'
 import { useChineseLocale } from '../context/ChineseLocaleContext'
@@ -15,16 +14,11 @@ export function HomePage() {
   const stats = getCourseStats()
   const { showChinese, pageChinese, togglePageChinese } = useChineseLocale()
   const firstChapter = getChaptersByPart(parts[0])[0]
-  const firstSlide = firstChapter ? getAllSlides(firstChapter)[0] : undefined
   const resumePath = getResumePath()
 
   return (
     <div className="home">
-      <motion.section
-        className="home-hero slide"
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
+      <section className="home-hero slide">
         <div className="home-hero-top">
           <p className="eyebrow">Windows-Focused University Slides</p>
           <button
@@ -78,74 +72,72 @@ export function HomePage() {
               Continue{showChinese ? ' / 继续学习' : ''}
             </Link>
           )}
-          {firstChapter && firstSlide && (
-            <Link
-              className={resumePath ? 'secondary-btn' : 'primary-btn'}
-              to={`/chapter/${firstChapter.id}/${firstSlide.id}`}
-            >
-              Start Part A{showChinese ? ' / 开始篇章 A' : ''}
-            </Link>
-          )}
-        </div>
-      </motion.section>
-
-      {parts.map((part, partIndex) => {
-        const partChapters = getChaptersByPart(part)
-        return (
-          <section key={part.id} className={`home-part theme-${part.theme}`}>
-            <header className="home-part-header">
-              <p className="home-part-label">
-                <PartIcon partId={part.id} className="part-icon" />
-                Part {String.fromCharCode(65 + partIndex)}
-                {showChinese
-                  ? ` / 篇章 ${String.fromCharCode(65 + partIndex)}`
-                  : ''}
-              </p>
-              <h2>
-                <span>{part.titleEn}</span>
-                {showChinese && <span>{part.titleZh}</span>}
-              </h2>
-              <p className="home-part-summary">
-                <span>{part.summaryEn}</span>
-                {showChinese && <span>{part.summaryZh}</span>}
-              </p>
-            </header>
-
-            <div className="home-grid">
-              {partChapters.map((chapter, index) => (
-                <motion.div
-                  key={chapter.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.04 * index }}
+              {firstChapter && (
+                <Link
+                  className={resumePath ? 'secondary-btn' : 'primary-btn'}
+                  to={`/chapter/${firstChapter.id}/${firstChapter.firstSlideId}`}
+                  onMouseEnter={() => preloadChapter(firstChapter.id)}
+                  onFocus={() => preloadChapter(firstChapter.id)}
                 >
-                  <Link
-                    to={`/chapter/${chapter.id}/${getAllSlides(chapter)[0].id}`}
-                    className="chapter-card"
-                  >
-                    <span className="chapter-card-num">
-                      {getChapterCode(chapter.id)}
-                    </span>
-                    <h3>
-                      <span>{chapter.titleEn}</span>
-                      {showChinese && <span>{chapter.titleZh}</span>}
-                    </h3>
-                    <p>
-                      <span>{chapter.summaryEn}</span>
-                      {showChinese && <span>{chapter.summaryZh}</span>}
-                    </p>
-                    <span className="chapter-card-meta">
-                      {chapter.sections.length} sections ·{' '}
-                      {chapter.sections.reduce((n, s) => n + s.slides.length, 0)}{' '}
-                      slides
-                    </span>
-                  </Link>
-                </motion.div>
-              ))}
+                  Start Part A{showChinese ? ' / 开始篇章 A' : ''}
+                </Link>
+              )}
             </div>
           </section>
-        )
-      })}
-    </div>
-  )
-}
+
+          {parts.map((part, partIndex) => {
+            const partChapters = getChaptersByPart(part)
+            return (
+              <section key={part.id} className={`home-part theme-${part.theme}`}>
+                <header className="home-part-header">
+                  <p className="home-part-label">
+                    <PartIcon partId={part.id} className="part-icon" />
+                    Part {String.fromCharCode(65 + partIndex)}
+                    {showChinese
+                      ? ` / 篇章 ${String.fromCharCode(65 + partIndex)}`
+                      : ''}
+                  </p>
+                  <h2>
+                    <span>{part.titleEn}</span>
+                    {showChinese && <span>{part.titleZh}</span>}
+                  </h2>
+                  <p className="home-part-summary">
+                    <span>{part.summaryEn}</span>
+                    {showChinese && <span>{part.summaryZh}</span>}
+                  </p>
+                </header>
+
+                <div className="home-grid">
+                  {partChapters.map((chapter) => (
+                    <div key={chapter.id}>
+                      <Link
+                        to={`/chapter/${chapter.id}/${chapter.firstSlideId}`}
+                        className="chapter-card"
+                        onMouseEnter={() => preloadChapter(chapter.id)}
+                        onFocus={() => preloadChapter(chapter.id)}
+                      >
+                        <span className="chapter-card-num">
+                          {getChapterCode(chapter.id)}
+                        </span>
+                        <h3>
+                          <span>{chapter.titleEn}</span>
+                          {showChinese && <span>{chapter.titleZh}</span>}
+                        </h3>
+                        <p>
+                          <span>{chapter.summaryEn}</span>
+                          {showChinese && <span>{chapter.summaryZh}</span>}
+                        </p>
+                        <span className="chapter-card-meta">
+                          {chapter.sections.length} sections · {chapter.slideCount}{' '}
+                          slides
+                        </span>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )
+          })}
+        </div>
+      )
+    }

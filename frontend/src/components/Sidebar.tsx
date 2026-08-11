@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   chapters,
-  getAllSlides,
+  findSectionIdForSlide,
   getChapterCode,
   getChaptersByPart,
   getPartForChapter,
   parts,
+  preloadChapter,
 } from '../data/chapters'
 import {
   readSidebarCollapsed,
@@ -44,13 +45,10 @@ export function Sidebar({ activeChapterId, activeSlideId }: Props) {
   const browseAll =
     isHome && new URLSearchParams(location.search).get('browse') === '1'
 
-  const activeSectionId = (() => {
-    if (!activeChapterId || !activeSlideId) return undefined
-    const chapter = chapters.find((item) => item.id === activeChapterId)
-    if (!chapter) return undefined
-    return getAllSlides(chapter).find((slide) => slide.id === activeSlideId)
-      ?.sectionId
-  })()
+  const activeSectionId =
+    activeChapterId && activeSlideId
+      ? findSectionIdForSlide(activeChapterId, activeSlideId)
+      : undefined
 
   const activePart = activeChapterId
     ? getPartForChapter(activeChapterId)
@@ -219,9 +217,9 @@ export function Sidebar({ activeChapterId, activeSlideId }: Props) {
     const part = parts.find((item) => item.id === partId)
     if (!part) return
     const firstChapter = getChaptersByPart(part)[0]
-    const firstSlide = firstChapter ? getAllSlides(firstChapter)[0] : undefined
-    if (!firstChapter || !firstSlide) return
-    navigate(`/chapter/${firstChapter.id}/${firstSlide.id}`)
+    if (!firstChapter) return
+    preloadChapter(firstChapter.id)
+    navigate(`/chapter/${firstChapter.id}/${firstChapter.firstSlideId}`)
   }
 
   const toggleChapter = (chapterId: string) => {
@@ -402,7 +400,6 @@ export function Sidebar({ activeChapterId, activeSlideId }: Props) {
                   aria-label={`Part ${activePartLetter} chapters`}
                 >
                   {getChaptersByPart(activePart).map((chapter) => {
-                    const firstSlide = getAllSlides(chapter)[0]
                     const code = getChapterCode(chapter.id)
                     const isActive = chapter.id === activeChapterId
                     return (
@@ -411,7 +408,8 @@ export function Sidebar({ activeChapterId, activeSlideId }: Props) {
                         className={`sidebar-focus-chapter-block ${isActive ? 'active' : ''}`}
                       >
                         <NavLink
-                          to={`/chapter/${chapter.id}/${firstSlide.id}`}
+                          to={`/chapter/${chapter.id}/${chapter.firstSlideId}`}
+                          onMouseEnter={() => preloadChapter(chapter.id)}
                           className={() =>
                             `sidebar-focus-chapter ${isActive ? 'active' : ''}`
                           }
@@ -424,13 +422,12 @@ export function Sidebar({ activeChapterId, activeSlideId }: Props) {
                         {isActive && chapter.sections.length > 0 && (
                           <ul className="sidebar-focus-sections">
                             {chapter.sections.map((section) => {
-                              const sectionFirst = section.slides[0]
                               const sectionActive =
                                 section.id === activeSectionId
                               return (
                                 <li key={section.id}>
                                   <NavLink
-                                    to={`/chapter/${chapter.id}/${sectionFirst.id}`}
+                                    to={`/chapter/${chapter.id}/${section.firstSlideId}`}
                                     className={() =>
                                       `sidebar-focus-section ${sectionActive ? 'active' : ''}`
                                     }
@@ -516,7 +513,6 @@ export function Sidebar({ activeChapterId, activeSlideId }: Props) {
                     const chapterExpanded =
                       Boolean(expandedChapters[chapter.id]) ||
                       Boolean(query.trim())
-                    const firstSlide = getAllSlides(chapter)[0]
                     const chapterActive = activeChapterId === chapter.id
 
                     return (
@@ -535,7 +531,8 @@ export function Sidebar({ activeChapterId, activeSlideId }: Props) {
                             {chapterExpanded ? '▾' : '▸'}
                           </button>
                           <NavLink
-                            to={`/chapter/${chapter.id}/${firstSlide.id}`}
+                            to={`/chapter/${chapter.id}/${chapter.firstSlideId}`}
+                            onMouseEnter={() => preloadChapter(chapter.id)}
                             className={() =>
                               `nav-chapter-link ${chapterActive ? 'active' : ''}`
                             }
@@ -553,11 +550,10 @@ export function Sidebar({ activeChapterId, activeSlideId }: Props) {
                         {chapterExpanded && (
                           <ul className="nav-sections">
                             {sections.map((section) => {
-                              const sectionFirst = section.slides[0]
                               return (
                                 <li key={section.id}>
                                   <NavLink
-                                    to={`/chapter/${chapter.id}/${sectionFirst.id}`}
+                                    to={`/chapter/${chapter.id}/${section.firstSlideId}`}
                                     className={() =>
                                       section.id === activeSectionId
                                         ? 'active'

@@ -1100,6 +1100,14 @@ button {
   background: var(--accent-soft);
 }
 
+.route-loading {
+  display: grid;
+  place-items: center;
+  min-height: 40vh;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
 .slide {
   background: var(--slide);
   border: 1px solid var(--line);

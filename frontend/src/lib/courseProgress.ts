@@ -1,4 +1,4 @@
-import { chapters, getAllSlides, getChapter } from '../data/chapters'
+import { chapters, getChapterMeta } from '../data/chapters'
 
 const COOKIE_NAME = 'courseProgress'
 const VISITED_KEY = 'courseVisitedSlides'
@@ -18,7 +18,9 @@ export type CourseProgressStats = {
 
 function allSlideKeys(): string[] {
   return chapters.flatMap((chapter) =>
-    getAllSlides(chapter).map((slide) => `${chapter.id}|${slide.id}`),
+    chapter.sections.flatMap((section) =>
+      section.slideIds.map((slideId) => `${chapter.id}|${slideId}`),
+    ),
   )
 }
 
@@ -44,11 +46,13 @@ export function getValidCourseProgress(): CourseProgress | undefined {
   const progress = readCourseProgress()
   if (!progress) return undefined
 
-  const chapter = getChapter(progress.chapterId)
+  const chapter = getChapterMeta(progress.chapterId)
   if (!chapter) return undefined
 
-  const slide = getAllSlides(chapter).find((item) => item.id === progress.slideId)
-  if (!slide) return undefined
+  const known = chapter.sections.some((section) =>
+    section.slideIds.includes(progress.slideId),
+  )
+  if (!known) return undefined
 
   return progress
 }

@@ -1,13 +1,16 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
+import type { Chapter } from '../types/course'
 import {
   getAdjacentChapters,
   getAllSlides,
-  getChapter,
   getChapterCode,
+  getChapterMeta,
   getPartForChapter,
+  loadChapter,
   parts,
+  preloadChapter,
 } from '../data/chapters'
 import { SlideView } from '../components/SlideView'
 import { PartIcon } from '../components/PartIcon'
@@ -21,7 +24,34 @@ export function ChapterPage() {
   const { chapterId = '', slideId } = useParams()
   const navigate = useNavigate()
   const { showChinese, pageChinese, togglePageChinese } = useChineseLocale()
-  const chapter = getChapter(chapterId)
+  const meta = getChapterMeta(chapterId)
+  const [chapter, setChapter] = useState<Chapter | undefined>()
+  const [loadError, setLoadError] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    setChapter(undefined)
+    setLoadError(false)
+
+    if (!chapterId) return
+
+    loadChapter(chapterId)
+      .then((loaded) => {
+        if (cancelled) return
+        if (!loaded) {
+          setLoadError(true)
+          return
+        }
+        setChapter(loaded)
+      })
+      .catch(() => {
+        if (!cancelled) setLoadError(true)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [chapterId])
 
   const slides = useMemo(() => (chapter ? getAllSlides(chapter) : []), [chapter])
 
@@ -49,6 +79,10 @@ export function ChapterPage() {
   }, [chapter, current, navigate, slideId])
 
   useEffect(() => {
+    if (nextChapter) preloadChapter(nextChapter.id)
+  }, [nextChapter])
+
+  useEffect(() => {
     if (!chapter || !slides.length || !current) return
 
     preloadTopicImages(
@@ -70,13 +104,17 @@ export function ChapterPage() {
     }
 
     if (!nextChapter) return
-    const nextChapterFirst = getAllSlides(nextChapter)[0]
-    if (!nextChapterFirst) return
     preloadTopicImages(
-      getSlideImageQueries(nextChapterFirst, {
-        chapterTitleEn: nextChapter.titleEn,
-        sectionTitleEn: nextChapterFirst.sectionTitleEn,
-      }),
+      getSlideImageQueries(
+        {
+          titleEn: nextChapter.titleEn,
+          keywords: [],
+        },
+        {
+          chapterTitleEn: nextChapter.titleEn,
+          sectionTitleEn: nextChapter.sections[0]?.titleEn,
+        },
+      ),
     )
   }, [chapter, current, nextChapter, resolvedIndex, slides])
 
@@ -102,7 +140,7 @@ export function ChapterPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [chapter, navigate, resolvedIndex, slides])
 
-  if (!chapter || !slides.length || !current) {
+  if (!meta || loadError) {
     return (
       <div className="slide">
         <h1>
@@ -113,6 +151,14 @@ export function ChapterPage() {
           Back home
           {showChinese ? ' / 返回首页' : ''}
         </Link>
+      </div>
+    )
+  }
+
+  if (!chapter || !slides.length || !current) {
+    return (
+      <div className="slide route-loading">
+        <p>Loading chapter…{showChinese ? ' / 正在加载章节…' : ''}</p>
       </div>
     )
   }
@@ -194,14 +240,14 @@ export function ChapterPage() {
 
       <div className="chapter-bottom-nav">
         {prevChapter ? (
-          <Link to={`/chapter/${prevChapter.id}/${getAllSlides(prevChapter)[0].id}`}>
+          <Link to={`/chapter/${prevChapter.id}/${prevChapter.firstSlideId}`}>
             ← Previous Chapter{showChinese ? ' / 上一章' : ''}
           </Link>
         ) : (
           <span />
         )}
         {nextChapter ? (
-          <Link to={`/chapter/${nextChapter.id}/${getAllSlides(nextChapter)[0].id}`}>
+          <Link to={`/chapter/${nextChapter.id}/${nextChapter.firstSlideId}`}>
             Next Chapter{showChinese ? ' / 下一章' : ''} →
           </Link>
         ) : (

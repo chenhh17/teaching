@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "generate:catalog": "node scripts/generate-catalog.mjs",
     "build": "npm run check:course && tsc -b && vite build",
-    "check:course": "node scripts/check-course.mjs",
+    "check:course": "node scripts/generate-catalog.mjs && node scripts/check-course.mjs",
     "lint": "oxlint",
     "preview": "vite preview"
   },
