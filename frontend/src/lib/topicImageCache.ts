@@ -25,10 +25,44 @@ function cacheKey(query: string) {
   return query.trim().toLowerCase()
 }
 
+function illustrationHint(
+  illustration: SlideContent['illustration'],
+): string | undefined {
+  switch (illustration) {
+    case 'hardware':
+      return 'computer hardware'
+    case 'network':
+    case 'protocol':
+    case 'interface':
+      return 'computer network'
+    case 'terminal':
+      return 'Windows PowerShell terminal'
+    case 'files':
+      return 'Windows File Explorer folders'
+    case 'python':
+    case 'code':
+      return 'programming code'
+    case 'cursor':
+      return 'code editor IDE'
+    case 'security':
+      return 'computer security'
+    case 'git':
+      return 'git version control'
+    case 'environment':
+      return 'software development environment'
+    default:
+      return undefined
+  }
+}
+
 export function getSlideImageQueries(
   slide: Pick<
     SlideContent,
-    'titleEn' | 'imageQuery' | 'imageQueries' | 'keywords'
+    | 'titleEn'
+    | 'imageQuery'
+    | 'imageQueries'
+    | 'keywords'
+    | 'illustration'
   >,
   context?: {
     chapterTitleEn?: string
@@ -56,16 +90,14 @@ export function getSlideImageQueries(
     .replace(/\s+/g, ' ')
     .trim()
 
-  const parts = [title]
-  if (context?.sectionTitleEn && context.sectionTitleEn !== title) {
-    parts.push(context.sectionTitleEn)
-  }
-  if (context?.chapterTitleEn && context.chapterTitleEn !== title) {
-    parts.push(context.chapterTitleEn)
-  }
-  if (slide.keywords?.[0]?.en) {
-    parts.push(slide.keywords[0].en)
-  }
+  const keywordParts = (slide.keywords ?? [])
+    .map((item) => item.en.trim())
+    .filter(Boolean)
+    .slice(0, 3)
+  const hint = illustrationHint(slide.illustration)
+
+  const parts = [title, ...keywordParts]
+  if (hint) parts.push(hint)
 
   const derived = parts.join(' ').replace(/\s+/g, ' ').trim()
   return derived ? [derived] : []

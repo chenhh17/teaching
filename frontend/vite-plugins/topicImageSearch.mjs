@@ -1,6 +1,9 @@
 const cache = new Map()
 const CACHE_MS = 1000 * 60 * 60 * 12
 
+const BLOCKED_HOST =
+  /(?:^|\.)(?:facebook\.com|fbsbx\.com|fbcdn\.net|instagram\.com|threads\.net|tiktok\.com|pinimg\.com|pinterest\.)/i
+
 function sendJson(res, status, body) {
   res.statusCode = status
   res.setHeader('Content-Type', 'application/json; charset=utf-8')
@@ -16,8 +19,63 @@ function decodeBingField(value) {
     .replace(/\\u003d/g, '=')
 }
 
-async function searchBing(query) {
-  const url = `https://www.bing.com/images/async?q=${encodeURIComponent(query)}&first=1&count=12&mmasync=1`
+function isBlockedImageUrl(url) {
+  try {
+    return BLOCKED_HOST.test(new URL(url).hostname)
+  } catch {
+    return true
+  }
+}
+
+function looksLikeImageBytes(buf) {
+  if (!buf || buf.length < 24) return false
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return true
+  if (
+    buf[0] === 0x89 &&
+    buf[1] === 0x50 &&
+    buf[2] === 0x4e &&
+    buf[3] === 0x47
+  ) {
+    return true
+  }
+  if (
+    buf[0] === 0x47 &&
+    buf[1] === 0x49 &&
+    buf[2] === 0x46 &&
+    buf[3] === 0x38
+  ) {
+    return true
+  }
+  if (
+    buf.toString('ascii', 0, 4) === 'RIFF' &&
+    buf.toString('ascii', 8, 12) === 'WEBP'
+  ) {
+    return true
+  }
+  return false
+}
+
+async function fetchImageBytes(targetUrl) {
+  if (!targetUrl || isBlockedImageUrl(targetUrl)) return null
+  const upstream = await fetch(targetUrl, {
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+      Referer: 'https://www.bing.com/',
+    },
+    redirect: 'follow',
+  })
+  if (!upstream.ok) return null
+  const type = (upstream.headers.get('content-type') || '').toLowerCase()
+  if (!type.startsWith('image/')) return null
+  const buf = Buffer.from(await upstream.arrayBuffer())
+  if (!looksLikeImageBytes(buf)) return null
+  return { buf, type: type.split(';')[0] || 'image/jpeg' }
+}
+
+async function searchBingCandidates(query) {
+  const url = `https://www.bing.com/images/async?q=${encodeURIComponent(query)}&first=1&count=20&mmasync=1`
   const res = await fetch(url, {
     headers: {
       'User-Agent':
@@ -26,22 +84,27 @@ async function searchBing(query) {
       Referer: `https://www.bing.com/images/search?q=${encodeURIComponent(query)}`,
     },
   })
-  if (!res.ok) return null
+  if (!res.ok) return []
   const html = await res.text()
-  const match = html.match(
-    /murl&quot;:&quot;(https?:.+?)&quot;,&quot;turl&quot;:&quot;(https?:.+?)&quot;/,
+  const titles = [...html.matchAll(/&quot;t&quot;:&quot;(.+?)&quot;/g)].map((m) =>
+    decodeBingField(m[1]),
   )
-  if (!match) return null
-  const titleMatch = html.match(/&quot;t&quot;:&quot;(.+?)&quot;/)
-  return {
-    image: decodeBingField(match[1]),
-    thumb: decodeBingField(match[2]),
-    title: titleMatch ? decodeBingField(titleMatch[1]) : query,
-    source: 'bing',
-  }
+  const matches = [
+    ...html.matchAll(
+      /murl&quot;:&quot;(https?:.+?)&quot;,&quot;turl&quot;:&quot;(https?:.+?)&quot;/g,
+    ),
+  ]
+  return matches
+    .map((match, index) => ({
+      image: decodeBingField(match[1]),
+      thumb: decodeBingField(match[2]),
+      title: titles[index] || query,
+      source: 'bing',
+    }))
+    .filter((item) => item.image && !isBlockedImageUrl(item.image))
 }
 
-async function searchDuckDuckGo(query) {
+async function searchDuckDuckGoCandidates(query) {
   const pageRes = await fetch(
     `https://duckduckgo.com/?q=${encodeURIComponent(query)}&iax=images&ia=images`,
     {
@@ -51,10 +114,10 @@ async function searchDuckDuckGo(query) {
       },
     },
   )
-  if (!pageRes.ok) return null
+  if (!pageRes.ok) return []
   const pageHtml = await pageRes.text()
   const vqd = pageHtml.match(/vqd=['"]([^'"]+)['"]/)?.[1]
-  if (!vqd) return null
+  if (!vqd) return []
 
   const apiRes = await fetch(
     `https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(query)}&vqd=${encodeURIComponent(vqd)}&f=,,,,,&p=1`,
@@ -66,103 +129,41 @@ async function searchDuckDuckGo(query) {
       },
     },
   )
-  if (!apiRes.ok) return null
+  if (!apiRes.ok) return []
   const data = await apiRes.json()
-  const first = data.results?.[0]
-  if (!first?.image) return null
-  return {
-    image: first.image,
-    thumb: first.thumbnail || first.image,
-    title: first.title || query,
-    source: 'duckduckgo',
-  }
+  return (data.results || [])
+    .map((item) => ({
+      image: item.image,
+      thumb: item.thumbnail || item.image,
+      title: item.title || query,
+      source: 'duckduckgo',
+    }))
+    .filter((item) => item.image && !isBlockedImageUrl(item.image))
 }
 
-async function searchGoogle(query) {
-  try {
-    const { chromium } = await import('playwright')
-    const browser = await chromium.launch({ headless: true })
-    try {
-      const page = await browser.newPage({
-        userAgent:
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        locale: 'en-US',
-      })
-      await page.goto(
-        `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}&hl=en&gl=us&safe=active`,
-        { waitUntil: 'domcontentloaded', timeout: 8000 },
-      )
-      await page.waitForTimeout(900)
-      for (const label of ['Accept all', 'I agree', 'Accept']) {
-        const btn = page.getByRole('button', { name: label })
-        if (await btn.count()) {
-          await btn.first().click({ timeout: 1500 }).catch(() => {})
-          break
-        }
+async function pickWorkingHit(candidates) {
+  for (const candidate of candidates.slice(0, 8)) {
+    const original = await fetchImageBytes(candidate.image)
+    if (original) {
+      return {
+        ...candidate,
+        bytes: original.buf,
+        contentType: original.type,
+        used: 'image',
       }
-
-      const ou = await page.evaluate(() => {
-        const html = document.documentElement.innerHTML
-        if (html.includes('unusual traffic') || html.includes('captcha')) {
-          return []
-        }
-        return [...html.matchAll(/"ou":"(https?:[^"]+)"/g)].map((m) =>
-          m[1]
-            .replace(/\\u003d/g, '=')
-            .replace(/\\u0026/g, '&')
-            .replace(/\\\//g, '/'),
-        )
-      })
-
-      if (ou[0]) {
-        return {
-          image: ou[0],
-          thumb: ou[0],
-          title: query,
-          source: 'google',
-        }
-      }
-
-      const imgs = page.locator('img')
-      const count = await imgs.count()
-      for (let i = 0; i < Math.min(count, 24); i += 1) {
-        const img = imgs.nth(i)
-        const box = await img.boundingBox()
-        if (!box || box.width < 90) continue
-        await img.click({ timeout: 2000 }).catch(() => {})
-        await page.waitForTimeout(900)
-        const picked = await page.evaluate(() => {
-          const nodes = [...document.querySelectorAll('img')]
-          for (const node of nodes) {
-            const src = node.currentSrc || node.src
-            if (
-              src &&
-              src.startsWith('http') &&
-              !src.includes('gstatic.com/images?q=tbn') &&
-              !src.includes('encrypted-tbn') &&
-              !src.includes('logo')
-            ) {
-              return src
-            }
-          }
-          return null
-        })
-        if (picked) {
-          return {
-            image: picked,
-            thumb: picked,
-            title: query,
-            source: 'google',
-          }
-        }
-      }
-      return null
-    } finally {
-      await browser.close()
     }
-  } catch {
-    return null
+    const thumb = await fetchImageBytes(candidate.thumb)
+    if (thumb) {
+      return {
+        ...candidate,
+        image: candidate.thumb,
+        bytes: thumb.buf,
+        contentType: thumb.type,
+        used: 'thumb',
+      }
+    }
   }
+  return null
 }
 
 async function resolveHit(query) {
@@ -170,42 +171,14 @@ async function resolveHit(query) {
   const cached = cache.get(key)
   if (cached && Date.now() - cached.at < CACHE_MS) return cached.hit
 
-  const bing = await searchBing(query)
-  if (bing) {
-    cache.set(key, { hit: bing, at: Date.now() })
-    void searchGoogle(query).then((google) => {
-      if (google) cache.set(key, { hit: google, at: Date.now() })
-    })
-    return bing
+  const bing = await searchBingCandidates(query)
+  let hit = await pickWorkingHit(bing)
+  if (!hit) {
+    const ddg = await searchDuckDuckGoCandidates(query)
+    hit = await pickWorkingHit(ddg)
   }
-
-  const google = await searchGoogle(query)
-  const hit = google || (await searchDuckDuckGo(query))
   if (hit) cache.set(key, { hit, at: Date.now() })
   return hit
-}
-
-async function proxyImage(targetUrl, res) {
-  const upstream = await fetch(targetUrl, {
-    headers: {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-      Referer: 'https://www.bing.com/',
-    },
-    redirect: 'follow',
-  })
-  if (!upstream.ok) {
-    res.statusCode = upstream.status
-    res.end('Image fetch failed')
-    return
-  }
-  const type = upstream.headers.get('content-type') || 'image/jpeg'
-  const buf = Buffer.from(await upstream.arrayBuffer())
-  res.statusCode = 200
-  res.setHeader('Content-Type', type)
-  res.setHeader('Cache-Control', 'public, max-age=86400')
-  res.end(buf)
 }
 
 export function topicImageSearchPlugin() {
@@ -234,6 +207,7 @@ export function topicImageSearchPlugin() {
               source: hit.source,
               image: hit.image,
               thumb: hit.thumb,
+              used: hit.used,
               displayUrl: `/api/topic-image-file?q=${encodeURIComponent(query)}`,
               googleUrl: `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query)}`,
             })
@@ -248,16 +222,15 @@ export function topicImageSearchPlugin() {
               return
             }
             const hit = await resolveHit(query)
-            if (!hit) {
+            if (!hit?.bytes) {
               res.statusCode = 404
               res.end('No image found')
               return
             }
-            try {
-              await proxyImage(hit.image, res)
-            } catch {
-              await proxyImage(hit.thumb, res)
-            }
+            res.statusCode = 200
+            res.setHeader('Content-Type', hit.contentType || 'image/jpeg')
+            res.setHeader('Cache-Control', 'public, max-age=86400')
+            res.end(hit.bytes)
             return
           }
 

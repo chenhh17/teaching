@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import {
   BrowserRouter,
   Navigate,
@@ -8,21 +8,14 @@ import {
   useNavigate,
 } from 'react-router-dom'
 import { Sidebar } from './components/Sidebar'
+import { HomePage } from './pages/HomePage'
+import { ChapterPage } from './pages/ChapterPage'
 import { ChineseLocaleProvider } from './context/ChineseLocaleContext'
-import { getPartForChapter, preloadChapter } from './data/chapters'
+import { getPartForChapter } from './data/chapters'
 import {
   getResumePath,
   saveCourseProgress,
 } from './lib/courseProgress'
-
-const HomePage = lazy(() =>
-  import('./pages/HomePage').then((module) => ({ default: module.HomePage })),
-)
-const ChapterPage = lazy(() =>
-  import('./pages/ChapterPage').then((module) => ({
-    default: module.ChapterPage,
-  })),
-)
 
 function ProgressSync({
   chapterId,
@@ -38,7 +31,6 @@ function ProgressSync({
   useEffect(() => {
     if (chapterId && slideId) {
       saveCourseProgress(chapterId, slideId)
-      preloadChapter(chapterId)
     }
   }, [chapterId, slideId])
 
@@ -51,8 +43,6 @@ function ProgressSync({
 
     const resumePath = getResumePath()
     if (resumePath) {
-      const match = resumePath.match(/^\/chapter\/([^/]+)/)
-      if (match?.[1]) preloadChapter(match[1])
       navigate(resumePath, { replace: true })
     }
   }, [location.pathname, location.search, navigate])
@@ -84,22 +74,14 @@ export default function App() {
     <BrowserRouter basename={routerBasename}>
       <ChineseLocaleProvider>
         <AppLayout>
-          <Suspense
-            fallback={
-              <div className="slide route-loading">
-                <p>Loading…</p>
-              </div>
-            }
-          >
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route
-                path="/chapter/:chapterId/:slideId?"
-                element={<ChapterPage />}
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Suspense>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route
+              path="/chapter/:chapterId/:slideId?"
+              element={<ChapterPage />}
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
         </AppLayout>
       </ChineseLocaleProvider>
     </BrowserRouter>

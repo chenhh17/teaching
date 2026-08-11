@@ -121,10 +121,16 @@ export const chBGpu: Chapter = {
           titleEn: 'Cables and Ports Matter',
           titleZh: '线缆与接口很重要',
           illustration: 'hardware',
+          imageQuery: 'HDMI cable computer monitor port close up',
           bodyEn:
             'HDMI, DisplayPort, and USB-C can all carry video depending on the device. A loose cable can look like a “GPU failure.” On laptops, the wrong output mode can blank an external monitor. Always check the physical link and Windows display detection before blaming the GPU.',
           bodyZh:
             'HDMI、DisplayPort 与 USB-C 都可能传输视频，取决于设备。松动的线缆看起来像“显卡坏了”。在笔记本上，错误的输出模式可能让外接显示器黑屏。先检查物理连接与 Windows 显示检测，再责怪 GPU。',
+          keywords: [
+            { en: 'HDMI', zh: 'HDMI' },
+            { en: 'DisplayPort', zh: 'DisplayPort' },
+            { en: 'USB-C', zh: 'USB-C' },
+          ],
           bullets: [
             {
               en: 'Common video links: HDMI, DisplayPort, some USB-C.',
