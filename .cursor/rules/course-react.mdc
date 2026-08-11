@@ -1,0 +1,28 @@
+---
+description: React app conventions for the teaching slide deck
+globs: frontend/src/**/*.{ts,tsx,css}
+alwaysApply: false
+---
+
+# Teaching App React Rules
+
+## Stack
+- Vite + React + TypeScript + react-router-dom + framer-motion in `frontend/`
+- Keep university PPT look in `frontend/src/index.css` (blue header, white slides)
+
+## Routing
+- Slides are URL-driven: `/chapter/:chapterId/:slideId`
+- Do not reintroduce local index state that fights the router
+- Sidebar links to first slide of chapter/section
+
+## Components
+- `SlideView` renders bullets, keywords, notes, and `slide.image`
+- Prefer extending data over inventing new layout systems
+- No code comments in TS/TSX
+
+## When adding chapters
+1. Create `frontend/src/data/chapters/ch-{part}-{slug}.ts` (Part A→`ch-a-...`, no numeric prefixes)
+2. Export/register in `frontend/src/data/chapters/index.ts`
+3. Add chapter id to the right group in `frontend/src/data/parts.ts`
+4. Put `image` / `imageAlt` on every new slide; slide ids start with the file stem
+5. From `frontend/`: run `npm run check:course` then `npm run build`

@@ -1,0 +1,119 @@
+.theme-navy {
+  --accent: #1d4ed8;
+  --accent-soft: #dbeafe;
+  --header: #1e3a8a;
+  --sidebar-from: #1e3a8a;
+  --sidebar-mid: #1e40af;
+  --sidebar-to: #1d4ed8;
+  --progress-from: #1d4ed8;
+  --progress-to: #38bdf8;
+  --part-chip: #1d4ed8;
+}
+
+.theme-teal {
+  --accent: #0f766e;
+  --accent-soft: #ccfbf1;
+  --header: #115e59;
+  --sidebar-from: #115e59;
+  --sidebar-mid: #0f766e;
+  --sidebar-to: #0d9488;
+  --progress-from: #0f766e;
+  --progress-to: #2dd4bf;
+  --part-chip: #0f766e;
+}
+
+.theme-green {
+  --accent: #15803d;
+  --accent-soft: #dcfce7;
+  --header: #166534;
+  --sidebar-from: #14532d;
+  --sidebar-mid: #166534;
+  --sidebar-to: #16a34a;
+  --progress-from: #15803d;
+  --progress-to: #4ade80;
+  --part-chip: #15803d;
+}
+
+.theme-amber {
+  --accent: #b45309;
+  --accent-soft: #ffedd5;
+  --header: #9a3412;
+  --sidebar-from: #9a3412;
+  --sidebar-mid: #c2410c;
+  --sidebar-to: #ea580c;
+  --progress-from: #c2410c;
+  --progress-to: #fbbf24;
+  --part-chip: #c2410c;
+}
+
+.theme-slate {
+  --accent: #475569;
+  --accent-soft: #e2e8f0;
+  --header: #334155;
+  --sidebar-from: #1e293b;
+  --sidebar-mid: #334155;
+  --sidebar-to: #475569;
+  --progress-from: #475569;
+  --progress-to: #94a3b8;
+  --part-chip: #475569;
+}
+
+.theme-indigo {
+  --accent: #3730a3;
+  --accent-soft: #e0e7ff;
+  --header: #312e81;
+  --sidebar-from: #312e81;
+  --sidebar-mid: #3730a3;
+  --sidebar-to: #4f46e5;
+  --progress-from: #4338ca;
+  --progress-to: #818cf8;
+  --part-chip: #4338ca;
+}
+
+.theme-rose {
+  --accent: #be123c;
+  --accent-soft: #ffe4e6;
+  --header: #9f1239;
+  --sidebar-from: #9f1239;
+  --sidebar-mid: #be123c;
+  --sidebar-to: #e11d48;
+  --progress-from: #be123c;
+  --progress-to: #fb7185;
+  --part-chip: #be123c;
+}
+
+.theme-cyan {
+  --accent: #0e7490;
+  --accent-soft: #cffafe;
+  --header: #155e75;
+  --sidebar-from: #164e63;
+  --sidebar-mid: #0e7490;
+  --sidebar-to: #0891b2;
+  --progress-from: #0e7490;
+  --progress-to: #67e8f9;
+  --part-chip: #0e7490;
+}
+
+.theme-orange {
+  --accent: #c2410c;
+  --accent-soft: #ffedd5;
+  --header: #9a3412;
+  --sidebar-from: #7c2d12;
+  --sidebar-mid: #c2410c;
+  --sidebar-to: #ea580c;
+  --progress-from: #c2410c;
+  --progress-to: #fdba74;
+  --part-chip: #c2410c;
+}
+
+.theme-violet {
+  --accent: #6d28d9;
+  --accent-soft: #ede9fe;
+  --header: #5b21b6;
+  --sidebar-from: #4c1d95;
+  --sidebar-mid: #6d28d9;
+  --sidebar-to: #7c3aed;
+  --progress-from: #6d28d9;
+  --progress-to: #c4b5fd;
+  --part-chip: #6d28d9;
+}

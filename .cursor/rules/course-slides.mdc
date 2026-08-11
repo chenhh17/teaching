@@ -1,0 +1,33 @@
+---
+description: Bilingual Windows-first PPT slide course content conventions
+globs: frontend/src/data/**/*.ts
+alwaysApply: false
+---
+
+# Course Slide Content Rules
+
+## Product shape
+- Professional lecture notes: bilingual EN + ZH, Windows-first
+- Prefer explanation paragraphs (`bodyEn`/`bodyZh`) and clear structure
+- Course photos are currently unused — do not add `image` / `images` fields unless the user explicitly asks
+
+## Data model
+- Chapters: `frontend/src/data/chapters/ch-{part}-{slug}.ts`
+- Slide ids: `{file-stem}-{slug}`
+- Register in `frontend/src/data/chapters/index.ts` and `parts.ts`
+- Follow `frontend/src/types/course.ts`
+- From `frontend/`: `npm run check:course`
+
+## Layouts
+- `title`: chapter opener
+- `text`: full-width explanation (default for most concept slides)
+- `split`: reserved for future text + media if images return
+- `steps`: numbered Windows try-it procedures
+- `callout`: goals, common mistakes, check-yourself
+
+## Writing
+- Prefer explanation over decoration: fuller `bodyEn`/`bodyZh` on concept slides when useful
+- Bullets are optional support; do not default to exactly 3. Use 0, 2, 4, 5, or 6+ as the idea needs
+- Keywords `{ en, zh }` on important terms
+- Windows-first: PowerShell, File Explorer, `py`, `C:\` paths
+- No comments in TypeScript source
