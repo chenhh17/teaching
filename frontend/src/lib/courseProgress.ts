@@ -1,9 +1,10 @@
+import { chapterPath, getBook } from '../data/books'
 import { chapters, getAllSlides, getChapter } from '../data/chapters'
 
-const COOKIE_NAME = 'courseProgress'
+const LEGACY_COOKIE_NAME = 'courseProgress'
+const MAX_AGE_SECONDS = 60 * 60 * 24 * 365
 const VISITED_KEY = 'courseVisitedSlides'
 const SIDEBAR_COLLAPSED_KEY = 'courseSidebarCollapsed'
-const MAX_AGE_SECONDS = 60 * 60 * 24 * 365
 
 export type CourseProgress = {
   chapterId: string
@@ -16,32 +17,58 @@ export type CourseProgressStats = {
   percent: number
 }
 
+function progressCookieName(bookId: string) {
+  return `bookProgress_${bookId}`
+}
+
 function allSlideKeys(): string[] {
   return chapters.flatMap((chapter) =>
     getAllSlides(chapter).map((slide) => `${chapter.id}|${slide.id}`),
   )
 }
 
-export function saveCourseProgress(chapterId: string, slideId: string) {
-  const value = encodeURIComponent(`${chapterId}|${slideId}`)
-  document.cookie = `${COOKIE_NAME}=${value}; Path=/; Max-Age=${MAX_AGE_SECONDS}; SameSite=Lax`
+function writeCookie(name: string, value: string) {
+  document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${MAX_AGE_SECONDS}; SameSite=Lax`
+}
+
+function readCookie(name: string): string | undefined {
+  const match = document.cookie
+    .split('; ')
+    .find((item) => item.startsWith(`${name}=`))
+  if (!match) return undefined
+  return decodeURIComponent(match.slice(name.length + 1))
+}
+
+export function saveCourseProgress(
+  bookId: string,
+  chapterId: string,
+  slideId: string,
+) {
+  const book = getBook(bookId)
+  if (!book || book.kind !== 'course') return
+
+  writeCookie(progressCookieName(bookId), `${chapterId}|${slideId}`)
+  if (bookId === 'computer') {
+    writeCookie(LEGACY_COOKIE_NAME, `${chapterId}|${slideId}`)
+  }
   markSlideVisited(chapterId, slideId)
 }
 
-export function readCourseProgress(): CourseProgress | undefined {
-  const match = document.cookie
-    .split('; ')
-    .find((item) => item.startsWith(`${COOKIE_NAME}=`))
-  if (!match) return undefined
+export function readCourseProgress(bookId: string): CourseProgress | undefined {
+  const raw =
+    readCookie(progressCookieName(bookId)) ||
+    (bookId === 'computer' ? readCookie(LEGACY_COOKIE_NAME) : undefined)
+  if (!raw) return undefined
 
-  const raw = decodeURIComponent(match.slice(COOKIE_NAME.length + 1))
   const [chapterId, slideId] = raw.split('|')
   if (!chapterId || !slideId) return undefined
   return { chapterId, slideId }
 }
 
-export function getValidCourseProgress(): CourseProgress | undefined {
-  const progress = readCourseProgress()
+export function getValidCourseProgress(
+  bookId: string,
+): CourseProgress | undefined {
+  const progress = readCourseProgress(bookId)
   if (!progress) return undefined
 
   const chapter = getChapter(progress.chapterId)
@@ -53,10 +80,10 @@ export function getValidCourseProgress(): CourseProgress | undefined {
   return progress
 }
 
-export function getResumePath(): string | undefined {
-  const progress = getValidCourseProgress()
+export function getResumePath(bookId: string): string | undefined {
+  const progress = getValidCourseProgress(bookId)
   if (!progress) return undefined
-  return `/chapter/${progress.chapterId}/${progress.slideId}`
+  return chapterPath(bookId, progress.chapterId, progress.slideId)
 }
 
 export function markSlideVisited(chapterId: string, slideId: string) {

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { chapterPath, getBook } from '../data/books'
 import {
   chapters,
   getAllSlides,
@@ -16,6 +17,7 @@ import { useChineseLocale } from '../context/ChineseLocaleContext'
 import { PartIcon } from './PartIcon'
 
 type Props = {
+  bookId: string
   activeChapterId?: string
   activeSlideId?: string
 }
@@ -36,13 +38,12 @@ function normalize(text: string) {
   return text.trim().toLowerCase()
 }
 
-export function Sidebar({ activeChapterId, activeSlideId }: Props) {
+export function Sidebar({ bookId, activeChapterId, activeSlideId }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
   const { showChinese, globalChinese, setShowChinese } = useChineseLocale()
-  const isHome = location.pathname === '/'
-  const browseAll =
-    isHome && new URLSearchParams(location.search).get('browse') === '1'
+  const book = getBook(bookId)
+  const browseAll = new URLSearchParams(location.search).get('browse') === '1'
 
   const activeSectionId = (() => {
     if (!activeChapterId || !activeSlideId) return undefined
@@ -221,7 +222,7 @@ export function Sidebar({ activeChapterId, activeSlideId }: Props) {
     const firstChapter = getChaptersByPart(part)[0]
     const firstSlide = firstChapter ? getAllSlides(firstChapter)[0] : undefined
     if (!firstChapter || !firstSlide) return
-    navigate(`/chapter/${firstChapter.id}/${firstSlide.id}`)
+    navigate(chapterPath(bookId, firstChapter.id, firstSlide.id))
   }
 
   const toggleChapter = (chapterId: string) => {
@@ -301,14 +302,14 @@ export function Sidebar({ activeChapterId, activeSlideId }: Props) {
         className={`sidebar ${collapsed ? 'is-collapsed' : ''} ${mobileOpen ? 'is-mobile-open' : ''}`}
       >
         <div className="sidebar-header">
-          <div className="sidebar-brand-link">
-            <strong>Intro Course</strong>
+          <Link to="/" className="sidebar-brand-link" title="Back to Books">
+            <strong>{book?.titleEn ?? 'Computer'}</strong>
             <span>
               {showChinese
-                ? 'Windows · 编程 · 网络'
-                : 'Windows · Programming · Network'}
+                ? book?.titleZh ?? '计算机'
+                : 'Books · Dashboard'}
             </span>
-          </div>
+          </Link>
           <div className="sidebar-header-actions">
             {showFull && (
               <button
@@ -411,7 +412,7 @@ export function Sidebar({ activeChapterId, activeSlideId }: Props) {
                         className={`sidebar-focus-chapter-block ${isActive ? 'active' : ''}`}
                       >
                         <NavLink
-                          to={`/chapter/${chapter.id}/${firstSlide.id}`}
+                          to={chapterPath(bookId, chapter.id, firstSlide.id)}
                           className={() =>
                             `sidebar-focus-chapter ${isActive ? 'active' : ''}`
                           }
@@ -430,7 +431,7 @@ export function Sidebar({ activeChapterId, activeSlideId }: Props) {
                               return (
                                 <li key={section.id}>
                                   <NavLink
-                                    to={`/chapter/${chapter.id}/${sectionFirst.id}`}
+                                    to={chapterPath(bookId, chapter.id, sectionFirst.id)}
                                     className={() =>
                                       `sidebar-focus-section ${sectionActive ? 'active' : ''}`
                                     }
@@ -535,7 +536,7 @@ export function Sidebar({ activeChapterId, activeSlideId }: Props) {
                             {chapterExpanded ? '▾' : '▸'}
                           </button>
                           <NavLink
-                            to={`/chapter/${chapter.id}/${firstSlide.id}`}
+                            to={chapterPath(bookId, chapter.id, firstSlide.id)}
                             className={() =>
                               `nav-chapter-link ${chapterActive ? 'active' : ''}`
                             }
@@ -557,7 +558,7 @@ export function Sidebar({ activeChapterId, activeSlideId }: Props) {
                               return (
                                 <li key={section.id}>
                                   <NavLink
-                                    to={`/chapter/${chapter.id}/${sectionFirst.id}`}
+                                    to={chapterPath(bookId, chapter.id, sectionFirst.id)}
                                     className={() =>
                                       section.id === activeSectionId
                                         ? 'active'

@@ -92,3 +92,20 @@ export type Part = {
   chapterIds: string[]
   theme: PartTheme
 }
+
+export type BookKind = 'course' | 'empty'
+
+export type Book = {
+  id: string
+  titleEn: string
+  titleZh: string
+  summaryEn: string
+  summaryZh: string
+  theme: PartTheme
+  kind: BookKind
+  partIds?: string[]
+  cover: string
+  icon: 'computer' | 'video'
+  spineEn: string
+  spineZh: string
+}

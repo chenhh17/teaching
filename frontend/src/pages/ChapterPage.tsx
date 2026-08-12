@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
+import { chapterPath, getBook } from '../data/books'
 import {
   getAdjacentChapters,
   getAllSlides,
@@ -18,9 +19,10 @@ import {
 } from '../lib/topicImageCache'
 
 export function ChapterPage() {
-  const { chapterId = '', slideId } = useParams()
+  const { bookId = '', chapterId = '', slideId } = useParams()
   const navigate = useNavigate()
   const { showChinese, pageChinese, togglePageChinese } = useChineseLocale()
+  const book = getBook(bookId)
   const chapter = getChapter(chapterId)
 
   const slides = useMemo(() => (chapter ? getAllSlides(chapter) : []), [chapter])
@@ -43,10 +45,10 @@ export function ChapterPage() {
   const { prev: prevChapter, next: nextChapter } = getAdjacentChapters(chapterId)
 
   useEffect(() => {
-    if (!chapter || !current) return
+    if (!book || book.kind !== 'course' || !chapter || !current) return
     if (slideId === current.id) return
-    navigate(`/chapter/${chapter.id}/${current.id}`, { replace: true })
-  }, [chapter, current, navigate, slideId])
+    navigate(chapterPath(book.id, chapter.id, current.id), { replace: true })
+  }, [book, chapter, current, navigate, slideId])
 
   useEffect(() => {
     if (!chapter || !slides.length || !current) return
@@ -82,25 +84,29 @@ export function ChapterPage() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (!chapter || !slides.length) return
+      if (!book || book.kind !== 'course' || !chapter || !slides.length) return
       if (event.key === 'ArrowRight' || event.key === 'PageDown') {
         event.preventDefault()
         const next = Math.min(resolvedIndex + 1, slides.length - 1)
         if (next !== resolvedIndex) {
-          navigate(`/chapter/${chapter.id}/${slides[next].id}`)
+          navigate(chapterPath(book.id, chapter.id, slides[next].id))
         }
       }
       if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
         event.preventDefault()
         const prev = Math.max(resolvedIndex - 1, 0)
         if (prev !== resolvedIndex) {
-          navigate(`/chapter/${chapter.id}/${slides[prev].id}`)
+          navigate(chapterPath(book.id, chapter.id, slides[prev].id))
         }
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [chapter, navigate, resolvedIndex, slides])
+  }, [book, chapter, navigate, resolvedIndex, slides])
+
+  if (!book || book.kind !== 'course') {
+    return <Navigate to="/" replace />
+  }
 
   if (!chapter || !slides.length || !current) {
     return (
@@ -110,8 +116,8 @@ export function ChapterPage() {
           {showChinese ? ' / 未找到章节' : ''}
         </h1>
         <Link to="/">
-          Back home
-          {showChinese ? ' / 返回首页' : ''}
+          Back to Books
+          {showChinese ? ' / 返回书库' : ''}
         </Link>
       </div>
     )
@@ -123,7 +129,7 @@ export function ChapterPage() {
 
   const goTo = (nextIndex: number) => {
     const clamped = Math.max(0, Math.min(nextIndex, slides.length - 1))
-    navigate(`/chapter/${chapter.id}/${slides[clamped].id}`)
+    navigate(chapterPath(book.id, chapter.id, slides[clamped].id))
   }
 
   return (
@@ -133,7 +139,8 @@ export function ChapterPage() {
           {part && partIndex >= 0 && (
             <p className="chapter-part-label">
               <PartIcon partId={part.id} className="part-icon" />
-              Part {String.fromCharCode(65 + partIndex)} · {part.titleEn}
+              {book.titleEn} · Part {String.fromCharCode(65 + partIndex)} ·{' '}
+              {part.titleEn}
               {showChinese ? ` / ${part.titleZh}` : ''}
             </p>
           )}
@@ -194,19 +201,31 @@ export function ChapterPage() {
 
       <div className="chapter-bottom-nav">
         {prevChapter ? (
-          <Link to={`/chapter/${prevChapter.id}/${getAllSlides(prevChapter)[0].id}`}>
+          <Link
+            to={chapterPath(
+              book.id,
+              prevChapter.id,
+              getAllSlides(prevChapter)[0].id,
+            )}
+          >
             ← Previous Chapter{showChinese ? ' / 上一章' : ''}
           </Link>
         ) : (
           <span />
         )}
         {nextChapter ? (
-          <Link to={`/chapter/${nextChapter.id}/${getAllSlides(nextChapter)[0].id}`}>
+          <Link
+            to={chapterPath(
+              book.id,
+              nextChapter.id,
+              getAllSlides(nextChapter)[0].id,
+            )}
+          >
             Next Chapter{showChinese ? ' / 下一章' : ''} →
           </Link>
         ) : (
           <Link to="/">
-            Back to syllabus{showChinese ? ' / 返回目录' : ''}
+            Back to Books{showChinese ? ' / 返回书库' : ''}
           </Link>
         )}
       </div>

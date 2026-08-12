@@ -57,6 +57,10 @@ button {
   grid-template-columns: 156px 1fr;
 }
 
+.app-shell.no-sidebar {
+  grid-template-columns: 1fr;
+}
+
 .sidebar-mobile-toggle,
 .sidebar-backdrop {
   display: none;
@@ -93,8 +97,14 @@ button {
   min-width: 0;
   padding: 4px 2px;
   border-radius: 8px;
-  cursor: default;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
   user-select: none;
+}
+
+.sidebar-brand-link:hover {
+  background: rgba(148, 163, 184, 0.12);
 }
 
 .sidebar-brand-link strong {
@@ -778,11 +788,209 @@ button {
   background: transparent;
 }
 
-.home {
+.home,
+.dashboard {
   max-width: 1100px;
   margin: 0 auto;
   display: grid;
   gap: 20px;
+}
+
+.shelf-page {
+  min-height: calc(100vh - 48px);
+  display: grid;
+  align-content: center;
+  gap: 28px;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 8px 8px 28px;
+}
+
+.shelf-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.shelf-top h1 {
+  margin: 0;
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Songti SC',
+    serif;
+  font-size: clamp(1.6rem, 2.4vw, 2rem);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #243244;
+}
+
+.shelf-top-zh {
+  margin: 4px 0 0;
+  color: #6b7a8d;
+  font-size: 0.95rem;
+}
+
+.shelf-stage {
+  position: relative;
+  padding: 34px 22px 0;
+  border-radius: 4px;
+  background: #e7ebf1;
+}
+
+.shelf-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 26px 32px;
+  padding: 4px 8px 0;
+}
+
+.shelf-book {
+  position: relative;
+  width: min(178px, 40vw);
+  aspect-ratio: 2 / 3;
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  border-radius: 2px 7px 7px 2px;
+  overflow: hidden;
+  transform-origin: 50% 100%;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  box-shadow:
+    0 16px 24px rgba(36, 50, 68, 0.22),
+    0 2px 0 rgba(255, 255, 255, 0.2) inset;
+}
+
+.shelf-book:hover,
+.shelf-book:focus-visible {
+  transform: translateY(-12px) rotate(-1.5deg);
+  box-shadow:
+    0 26px 34px rgba(36, 50, 68, 0.28),
+    0 2px 0 rgba(255, 255, 255, 0.22) inset;
+  outline: none;
+}
+
+.shelf-book-spine {
+  display: grid;
+  place-items: center;
+  padding: 12px 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 82%, #111827),
+    color-mix(in srgb, var(--accent) 70%, #0f172a)
+  );
+  box-shadow:
+    inset -1px 0 0 rgba(255, 255, 255, 0.16),
+    inset 1px 0 0 rgba(0, 0, 0, 0.25);
+}
+
+.shelf-book-spine span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.88);
+  font-weight: 700;
+}
+
+.shelf-book-cover {
+  position: relative;
+  overflow: hidden;
+  background-color: #1f2937;
+  background-size: cover;
+  background-position: center;
+}
+
+.shelf-book-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(15, 23, 42, 0.12) 0%,
+      rgba(15, 23, 42, 0.35) 48%,
+      rgba(15, 23, 42, 0.82) 100%
+    ),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.22), transparent 22%);
+}
+
+.shelf-book-content {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  align-content: end;
+  gap: 7px;
+  padding: 16px 14px 14px;
+  color: #f8fafc;
+}
+
+.shelf-book-icon {
+  width: 32px;
+  height: 32px;
+  color: #fff;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+  margin-bottom: 2px;
+}
+
+.shelf-book-content strong {
+  display: grid;
+  gap: 2px;
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Songti SC',
+    serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.15;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+.shelf-book-content strong span:last-child:not(:only-child) {
+  font-size: 0.78em;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.shelf-book-content em {
+  font-style: normal;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.8);
+}
+
+.shelf-board {
+  height: 16px;
+  margin-top: 10px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #cbb08a 0%, #a9845d 55%, #8f6b45 100%);
+  box-shadow:
+    0 8px 16px rgba(60, 40, 20, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.empty-book {
+  padding: 36px 40px !important;
+}
+
+.empty-book h1 {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+  font-family: Georgia, 'Songti SC', 'Noto Serif SC', serif;
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  color: var(--header);
+}
+
+.empty-book h1 span:nth-child(2) {
+  font-size: 0.7em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.empty-book-note {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  margin: 0 0 22px;
 }
 
 .home-hero {
