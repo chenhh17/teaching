@@ -61,9 +61,19 @@ jobs:
             cp "$HOME/teaching/nginx/teaching.conf" "$HOME/controller/nginx/services.d/teaching.conf"
             mkdir -p "$HOME/.config/systemd/user"
             cp "$HOME/teaching/scripts/teaching-topic-image.service" "$HOME/.config/systemd/user/teaching-topic-image.service"
+            if sudo -n loginctl enable-linger "$(whoami)" 2>/dev/null; then
+              echo "Enabled systemd user linger for $(whoami)"
+            elif loginctl enable-linger 2>/dev/null; then
+              echo "Enabled systemd user linger"
+            else
+              echo "WARNING: could not enable linger; topic-image may stop after logout"
+            fi
             systemctl --user daemon-reload
             systemctl --user enable --now teaching-topic-image.service
             systemctl --user restart teaching-topic-image.service
+            sleep 1
+            systemctl --user --quiet is-active teaching-topic-image.service
+            curl -fsS -m 20 "http://127.0.0.1:9010/teaching/api/topic-image?q=healthcheck" >/dev/null
             chmod o+x "$HOME" || true
             chmod -R a+rX "$HOME/teaching" || true
             if sudo -n true 2>/dev/null; then
