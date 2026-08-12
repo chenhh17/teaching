@@ -38,6 +38,8 @@ function normalize(text: string) {
   return text.trim().toLowerCase()
 }
 
+const PART_EXPAND_MS = 220
+
 export function Sidebar({ bookId, activeChapterId, activeSlideId }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
@@ -81,25 +83,65 @@ export function Sidebar({ bookId, activeChapterId, activeSlideId }: Props) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(() => readSidebarCollapsed())
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [revealedPartId, setRevealedPartId] = useState<string | undefined>(
+    activePartId,
+  )
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const skipRevealDelay = useRef(true)
 
   useEffect(() => {
     if (browseAll) {
       setExpandedParts(allPartsOpen())
+      setRevealedPartId(undefined)
       return
     }
 
     if (!activeChapterId || !activePartId) return
 
+    if (query.trim()) {
+      setExpandedChapters((current) => ({
+        ...current,
+        [activeChapterId]: true,
+      }))
+      return
+    }
+
     setExpandedParts((current) => {
-      if (query.trim()) return current
-      return onlyPartOpen(activePartId)
+      const next = onlyPartOpen(activePartId)
+      const same =
+        parts.every((part) => Boolean(current[part.id]) === Boolean(next[part.id]))
+      return same ? current : next
     })
     setExpandedChapters((current) => ({
       ...current,
       [activeChapterId]: true,
     }))
   }, [activeChapterId, activePartId, browseAll, query])
+
+  useEffect(() => {
+    if (browseAll || query.trim()) {
+      setRevealedPartId(activePartId)
+      return
+    }
+
+    if (!activePartId) {
+      setRevealedPartId(undefined)
+      return
+    }
+
+    if (skipRevealDelay.current) {
+      skipRevealDelay.current = false
+      setRevealedPartId(activePartId)
+      return
+    }
+
+    setRevealedPartId(undefined)
+    const timer = window.setTimeout(() => {
+      setRevealedPartId(activePartId)
+    }, PART_EXPAND_MS)
+
+    return () => window.clearTimeout(timer)
+  }, [activePartId, browseAll, query])
 
   useEffect(() => {
     saveSidebarCollapsed(collapsed)
@@ -213,10 +255,6 @@ export function Sidebar({ bookId, activeChapterId, activeSlideId }: Props) {
   }
 
   const openPart = (partId: string) => {
-    setExpandedParts((current) => ({
-      ...current,
-      [partId]: true,
-    }))
     const part = parts.find((item) => item.id === partId)
     if (!part) return
     const firstChapter = getChaptersByPart(part)[0]
@@ -474,15 +512,21 @@ export function Sidebar({ bookId, activeChapterId, activeSlideId }: Props) {
 
           {filtered.map(({ part, chapters: partChapters }) => {
             const partIndex = parts.findIndex((item) => item.id === part.id)
-            const partExpanded =
-              Boolean(expandedParts[part.id]) || Boolean(query.trim())
             const partActive = part.id === activePartId
+            const textReady =
+              Boolean(query.trim()) ||
+              browseAll ||
+              !partActive ||
+              part.id === revealedPartId
+            const partExpanded =
+              (Boolean(expandedParts[part.id]) || Boolean(query.trim())) &&
+              (!partActive || textReady)
             const letter = String.fromCharCode(65 + partIndex)
 
             return (
               <div
                 key={part.id}
-                className={`nav-part theme-${part.theme} ${partActive ? 'active' : ''} ${partExpanded ? 'open' : ''}`}
+                className={`nav-part theme-${part.theme} ${partActive ? 'active' : ''} ${partExpanded ? 'open' : ''} ${textReady ? 'text-ready' : 'text-pending'}`}
               >
                 <div className="nav-part-row">
                   <button
@@ -513,6 +557,7 @@ export function Sidebar({ bookId, activeChapterId, activeSlideId }: Props) {
                 </div>
 
                 {partExpanded &&
+                  textReady &&
                   partChapters.map(({ chapter, sections }) => {
                     const chapterExpanded =
                       Boolean(expandedChapters[chapter.id]) ||

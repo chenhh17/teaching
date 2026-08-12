@@ -46,7 +46,7 @@ export function TopicSearchImages({ queries, onExpand }: Props) {
             <figure key={query} className="slide-photo is-search">
               <div className="slide-photo-loading">Searching images…</div>
               <figcaption className="slide-photo-caption">
-                Google Images · {query}
+                <span>Google Images · {query}</span>
               </figcaption>
             </figure>
           )
@@ -66,7 +66,7 @@ export function TopicSearchImages({ queries, onExpand }: Props) {
                 </a>
               </div>
               <figcaption className="slide-photo-caption">
-                Google Images · {query}
+                <span>Google Images · {query}</span>
               </figcaption>
             </figure>
           )

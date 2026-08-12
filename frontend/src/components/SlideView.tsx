@@ -10,6 +10,7 @@ type Props = {
   slide: SlideContent
   sectionTitleEn: string
   sectionTitleZh: string
+  partTitleEn?: string
   chapterTitleEn?: string
   chapterCode: string
   slideIndex: number
@@ -59,6 +60,7 @@ export function SlideView({
   slide,
   sectionTitleEn,
   sectionTitleZh,
+  partTitleEn,
   chapterTitleEn,
   chapterCode,
   slideIndex,
@@ -133,7 +135,11 @@ export function SlideView({
       <div className="slide-body">
         <div className="slide-main">
           {slide.keywords && slide.keywords.length > 0 && (
-            <KeywordList items={slide.keywords} />
+            <KeywordList
+              items={slide.keywords}
+              partTitleEn={partTitleEn}
+              chapterTitleEn={chapterTitleEn}
+            />
           )}
 
           {(slide.bodyEn || (showChinese && slide.bodyZh)) && (
@@ -163,7 +169,11 @@ export function SlideView({
                       <div className="bullet-zh">{bullet.zh}</div>
                     )}
                     {bullet.keywords && bullet.keywords.length > 0 && (
-                      <KeywordList items={bullet.keywords} />
+                      <KeywordList
+                        items={bullet.keywords}
+                        partTitleEn={partTitleEn}
+                        chapterTitleEn={chapterTitleEn}
+                      />
                     )}
                   </div>
                 </motion.li>

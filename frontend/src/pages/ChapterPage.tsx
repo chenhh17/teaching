@@ -192,6 +192,7 @@ export function ChapterPage() {
           slide={current}
           sectionTitleEn={current.sectionTitleEn}
           sectionTitleZh={current.sectionTitleZh}
+          partTitleEn={part?.titleEn}
           chapterTitleEn={chapter.titleEn}
           chapterCode={chapterCode ?? ''}
           slideIndex={resolvedIndex}
