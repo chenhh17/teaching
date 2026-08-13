@@ -101,6 +101,14 @@ export async function buildAnalysis(userId) {
     [userId],
   )
 
+  const last = await query(
+    `SELECT GREATEST(
+       (SELECT MAX(updated_at) FROM focus_time WHERE user_id = $1),
+       (SELECT MAX(first_read_at) FROM page_reads WHERE user_id = $1)
+     ) AS last_active`,
+    [userId],
+  )
+
   const focusMap = new Map()
   let totalSeconds = 0
   for (const row of focus.rows) {
@@ -189,6 +197,7 @@ export async function buildAnalysis(userId) {
       focusedMinutes: round1(totalSeconds / 60),
       readPages: totalPages,
       totalHeartbeatsSeconds: totalSeconds,
+      lastActiveAt: last.rows[0]?.last_active ?? null,
     },
     byBook,
     byPart,

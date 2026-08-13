@@ -1,44 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { AnalysisDashboard, AdminUserProgress } from '../components/AnalysisDashboard'
 import { useAuth } from '../context/AuthContext'
-import { getBook } from '../data/books'
-import { getChapter } from '../data/chapters'
-import { parts } from '../data/parts'
 import { ApiError, apiJson } from '../lib/api'
-
-type AnalysisTotals = {
-  focusedMinutes: number
-  readPages: number
-  totalHeartbeatsSeconds?: number
-}
-
-type BookRow = {
-  bookId: string
-  focusedMinutes: number
-  readPages: number
-}
-
-type PartRow = {
-  bookId: string
-  partId: string | null
-  focusedMinutes: number
-  readPages: number
-}
-
-type ChapterRow = {
-  bookId: string
-  partId: string | null
-  chapterId: string
-  focusedMinutes: number
-  readPages: number
-}
-
-type AnalysisPayload = {
-  totals: AnalysisTotals
-  byBook: BookRow[]
-  byPart: PartRow[]
-  byChapter: ChapterRow[]
-}
+import {
+  formatRelativeTime,
+  type AnalysisPayload,
+  type AnalysisTotals,
+} from '../lib/readingAnalysis'
 
 type AdminUser = {
   id: number | string
@@ -46,125 +15,6 @@ type AdminUser = {
   role: string
   createdAt?: string
   totals: AnalysisTotals
-}
-
-function bookTitle(bookId: string) {
-  return getBook(bookId)?.titleEn ?? bookId
-}
-
-function partTitle(partId: string | null | undefined) {
-  if (!partId) return '—'
-  return parts.find((part) => part.id === partId)?.titleEn ?? partId
-}
-
-function chapterTitle(chapterId: string) {
-  return getChapter(chapterId)?.titleEn ?? chapterId
-}
-
-function formatMinutes(value: number) {
-  if (!Number.isFinite(value)) return '0'
-  return Number.isInteger(value) ? String(value) : value.toFixed(1)
-}
-
-function AnalysisBreakdown({ data }: { data: AnalysisPayload }) {
-  return (
-    <div className="analysis-breakdown">
-      <section className="analysis-summary">
-        <div className="analysis-stat">
-          <span className="analysis-stat-label">Focused minutes</span>
-          <strong>{formatMinutes(data.totals.focusedMinutes)}</strong>
-        </div>
-        <div className="analysis-stat">
-          <span className="analysis-stat-label">Pages read</span>
-          <strong>{data.totals.readPages}</strong>
-        </div>
-      </section>
-
-      <section className="analysis-section">
-        <h2>By book</h2>
-        {data.byBook.length === 0 ? (
-          <p className="analysis-empty">No book activity yet.</p>
-        ) : (
-          <table className="analysis-table">
-            <thead>
-              <tr>
-                <th>Book</th>
-                <th>Minutes</th>
-                <th>Pages</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.byBook.map((row) => (
-                <tr key={row.bookId}>
-                  <td>{bookTitle(row.bookId)}</td>
-                  <td>{formatMinutes(row.focusedMinutes)}</td>
-                  <td>{row.readPages}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-
-      <section className="analysis-section">
-        <h2>By part</h2>
-        {data.byPart.length === 0 ? (
-          <p className="analysis-empty">No part activity yet.</p>
-        ) : (
-          <table className="analysis-table">
-            <thead>
-              <tr>
-                <th>Book</th>
-                <th>Part</th>
-                <th>Minutes</th>
-                <th>Pages</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.byPart.map((row) => (
-                <tr key={`${row.bookId}:${row.partId ?? ''}`}>
-                  <td>{bookTitle(row.bookId)}</td>
-                  <td>{partTitle(row.partId)}</td>
-                  <td>{formatMinutes(row.focusedMinutes)}</td>
-                  <td>{row.readPages}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-
-      <section className="analysis-section">
-        <h2>By chapter</h2>
-        {data.byChapter.length === 0 ? (
-          <p className="analysis-empty">No chapter activity yet.</p>
-        ) : (
-          <table className="analysis-table">
-            <thead>
-              <tr>
-                <th>Book</th>
-                <th>Part</th>
-                <th>Chapter</th>
-                <th>Minutes</th>
-                <th>Pages</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.byChapter.map((row) => (
-                <tr key={`${row.bookId}:${row.partId ?? ''}:${row.chapterId}`}>
-                  <td>{bookTitle(row.bookId)}</td>
-                  <td>{partTitle(row.partId)}</td>
-                  <td>{chapterTitle(row.chapterId)}</td>
-                  <td>{formatMinutes(row.focusedMinutes)}</td>
-                  <td>{row.readPages}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-    </div>
-  )
 }
 
 export function AnalysisPage() {
@@ -338,11 +188,11 @@ export function AnalysisPage() {
         <h2 className="analysis-panel-title">Your progress</h2>
         {mineLoading && <p className="analysis-status">Loading…</p>}
         {mineError && <p className="analysis-error">{mineError}</p>}
-        {!mineLoading && !mineError && mine && <AnalysisBreakdown data={mine} />}
+        {!mineLoading && !mineError && mine && <AnalysisDashboard data={mine} />}
       </section>
 
       {isAdmin && (
-        <section className="analysis-panel analysis-admin">
+        <section className="analysis-panel analysis-admin" data-report="admin">
           <h2 className="analysis-panel-title">Admin · users</h2>
           {usersLoading && <p className="analysis-status">Loading users…</p>}
           {usersError && <p className="analysis-error">{usersError}</p>}
@@ -352,8 +202,8 @@ export function AnalysisPage() {
                 <tr>
                   <th>User</th>
                   <th>Role</th>
-                  <th>Minutes</th>
-                  <th>Pages</th>
+                  <th>Progress</th>
+                  <th>Last active</th>
                 </tr>
               </thead>
               <tbody>
@@ -376,8 +226,13 @@ export function AnalysisPage() {
                         </button>
                       </td>
                       <td>{item.role}</td>
-                      <td>{formatMinutes(item.totals.focusedMinutes)}</td>
-                      <td>{item.totals.readPages}</td>
+                      <td>
+                        <AdminUserProgress
+                          readPages={item.totals.readPages}
+                          minutes={item.totals.focusedMinutes}
+                        />
+                      </td>
+                      <td>{formatRelativeTime(item.totals.lastActiveAt)}</td>
                     </tr>
                   )
                 })}
@@ -407,7 +262,7 @@ export function AnalysisPage() {
                 <p className="analysis-error">{selectedError}</p>
               )}
               {!selectedLoading && !selectedError && selectedAnalysis && (
-                <AnalysisBreakdown data={selectedAnalysis} />
+                <AnalysisDashboard data={selectedAnalysis} />
               )}
 
               <form className="analysis-password-form" onSubmit={onPasswordSubmit}>

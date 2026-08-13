@@ -11,19 +11,20 @@ export async function handleListUsers() {
        u.role,
        u.created_at,
        COALESCE(f.seconds, 0)::int AS total_seconds,
-       COALESCE(r.pages, 0)::int AS read_pages
+       COALESCE(r.pages, 0)::int AS read_pages,
+       GREATEST(f.last_at, r.last_at) AS last_active
      FROM users u
      LEFT JOIN (
-       SELECT user_id, SUM(seconds) AS seconds
+       SELECT user_id, SUM(seconds) AS seconds, MAX(updated_at) AS last_at
        FROM focus_time
        GROUP BY user_id
      ) f ON f.user_id = u.id
      LEFT JOIN (
-       SELECT user_id, COUNT(*) AS pages
+       SELECT user_id, COUNT(*) AS pages, MAX(first_read_at) AS last_at
        FROM page_reads
        GROUP BY user_id
      ) r ON r.user_id = u.id
-     ORDER BY u.id ASC`,
+     ORDER BY COALESCE(GREATEST(f.last_at, r.last_at), u.created_at) DESC`,
   )
 
   const users = result.rows.map((row) => ({
@@ -35,6 +36,7 @@ export async function handleListUsers() {
       focusedMinutes: Math.round((row.total_seconds / 60) * 10) / 10,
       readPages: row.read_pages,
       totalHeartbeatsSeconds: row.total_seconds,
+      lastActiveAt: row.last_active,
     },
   }))
 
