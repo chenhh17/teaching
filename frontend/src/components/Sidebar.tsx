@@ -14,6 +14,7 @@ import {
   saveSidebarCollapsed,
 } from '../lib/courseProgress'
 import { useChineseLocale } from '../context/ChineseLocaleContext'
+import { useReadHints } from '../context/ReadHintsContext'
 import { PartIcon } from './PartIcon'
 
 type Props = {
@@ -44,6 +45,7 @@ export function Sidebar({ bookId, activeChapterId, activeSlideId }: Props) {
   const location = useLocation()
   const navigate = useNavigate()
   const { showChinese, globalChinese, setShowChinese } = useChineseLocale()
+  const { isSlideRead, areSlidesRead } = useReadHints(bookId)
   const book = getBook(bookId)
   const browseAll = new URLSearchParams(location.search).get('browse') === '1'
 
@@ -349,6 +351,27 @@ export function Sidebar({ bookId, activeChapterId, activeSlideId }: Props) {
             </span>
           </Link>
           <div className="sidebar-header-actions">
+            <Link
+              to="/analysis"
+              className="sidebar-icon-btn"
+              aria-label="Open reading analysis"
+              title="Analysis"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                width="14"
+                height="14"
+                aria-hidden="true"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.998 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </Link>
             {showFull && (
               <button
                 type="button"
@@ -441,9 +464,14 @@ export function Sidebar({ bookId, activeChapterId, activeSlideId }: Props) {
                   aria-label={`Part ${activePartLetter} chapters`}
                 >
                   {getChaptersByPart(activePart).map((chapter) => {
-                    const firstSlide = getAllSlides(chapter)[0]
+                    const allSlides = getAllSlides(chapter)
+                    const firstSlide = allSlides[0]
                     const code = getChapterCode(chapter.id)
                     const isActive = chapter.id === activeChapterId
+                    const chapterRead = areSlidesRead(
+                      chapter.id,
+                      allSlides.map((slide) => slide.id),
+                    )
                     return (
                       <div
                         key={chapter.id}
@@ -456,6 +484,10 @@ export function Sidebar({ bookId, activeChapterId, activeSlideId }: Props) {
                           }
                           title={`${code}: ${chapter.titleEn}`}
                         >
+                          <span
+                            className={`read-hint ${chapterRead ? 'is-read' : ''}`}
+                            aria-hidden="true"
+                          />
                           <span className="sidebar-focus-code">{code}</span>
                           <span>{chapter.titleEn}</span>
                           {showChinese && <span>{chapter.titleZh}</span>}
@@ -466,10 +498,18 @@ export function Sidebar({ bookId, activeChapterId, activeSlideId }: Props) {
                               const sectionFirst = section.slides[0]
                               const sectionActive =
                                 section.id === activeSectionId
+                              const sectionRead = areSlidesRead(
+                                chapter.id,
+                                section.slides.map((slide) => slide.id),
+                              )
                               return (
                                 <li key={section.id}>
                                   <NavLink
-                                    to={chapterPath(bookId, chapter.id, sectionFirst.id)}
+                                    to={chapterPath(
+                                      bookId,
+                                      chapter.id,
+                                      sectionFirst.id,
+                                    )}
                                     className={() =>
                                       `sidebar-focus-section ${sectionActive ? 'active' : ''}`
                                     }
@@ -479,11 +519,43 @@ export function Sidebar({ bookId, activeChapterId, activeSlideId }: Props) {
                                         : section.titleEn
                                     }
                                   >
+                                    <span
+                                      className={`read-hint ${sectionRead ? 'is-read' : ''}`}
+                                      aria-hidden="true"
+                                    />
                                     <span>{section.titleEn}</span>
                                     {showChinese && (
                                       <span>{section.titleZh}</span>
                                     )}
                                   </NavLink>
+                                  {sectionActive && section.slides.length > 0 && (
+                                    <ul className="sidebar-focus-slides">
+                                      {section.slides.map((slide) => (
+                                        <li key={slide.id}>
+                                          <NavLink
+                                            to={chapterPath(
+                                              bookId,
+                                              chapter.id,
+                                              slide.id,
+                                            )}
+                                            className={({ isActive: slideActive }) =>
+                                              `sidebar-focus-slide ${slideActive ? 'active' : ''}`
+                                            }
+                                            title={slide.titleEn}
+                                          >
+                                            <span
+                                              className={`read-hint ${isSlideRead(chapter.id, slide.id) ? 'is-read' : ''}`}
+                                              aria-hidden="true"
+                                            />
+                                            <span>{slide.titleEn}</span>
+                                            {showChinese && (
+                                              <span>{slide.titleZh}</span>
+                                            )}
+                                          </NavLink>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
                                 </li>
                               )
                             })}
@@ -562,8 +634,13 @@ export function Sidebar({ bookId, activeChapterId, activeSlideId }: Props) {
                     const chapterExpanded =
                       Boolean(expandedChapters[chapter.id]) ||
                       Boolean(query.trim())
-                    const firstSlide = getAllSlides(chapter)[0]
+                    const allSlides = getAllSlides(chapter)
+                    const firstSlide = allSlides[0]
                     const chapterActive = activeChapterId === chapter.id
+                    const chapterRead = areSlidesRead(
+                      chapter.id,
+                      allSlides.map((slide) => slide.id),
+                    )
 
                     return (
                       <div
@@ -586,6 +663,10 @@ export function Sidebar({ bookId, activeChapterId, activeSlideId }: Props) {
                               `nav-chapter-link ${chapterActive ? 'active' : ''}`
                             }
                           >
+                            <span
+                              className={`read-hint ${chapterRead ? 'is-read' : ''}`}
+                              aria-hidden="true"
+                            />
                             <span className="nav-num">
                               {getChapterCode(chapter.id)}
                             </span>
@@ -600,21 +681,64 @@ export function Sidebar({ bookId, activeChapterId, activeSlideId }: Props) {
                           <ul className="nav-sections">
                             {sections.map((section) => {
                               const sectionFirst = section.slides[0]
+                              const sectionActive =
+                                section.id === activeSectionId
+                              const sectionRead = areSlidesRead(
+                                chapter.id,
+                                section.slides.map((slide) => slide.id),
+                              )
                               return (
                                 <li key={section.id}>
                                   <NavLink
-                                    to={chapterPath(bookId, chapter.id, sectionFirst.id)}
+                                    to={chapterPath(
+                                      bookId,
+                                      chapter.id,
+                                      sectionFirst.id,
+                                    )}
                                     className={() =>
-                                      section.id === activeSectionId
-                                        ? 'active'
-                                        : undefined
+                                      sectionActive ? 'active' : undefined
                                     }
                                   >
+                                    <span
+                                      className={`read-hint ${sectionRead ? 'is-read' : ''}`}
+                                      aria-hidden="true"
+                                    />
                                     <span>{section.titleEn}</span>
                                     {showChinese && (
                                       <span>{section.titleZh}</span>
                                     )}
                                   </NavLink>
+                                  {(sectionActive || Boolean(query.trim())) &&
+                                    section.slides.length > 0 && (
+                                      <ul className="nav-slides">
+                                        {section.slides.map((slide) => (
+                                          <li key={slide.id}>
+                                            <NavLink
+                                              to={chapterPath(
+                                                bookId,
+                                                chapter.id,
+                                                slide.id,
+                                              )}
+                                              className={({
+                                                isActive: slideActive,
+                                              }) =>
+                                                slideActive ? 'active' : undefined
+                                              }
+                                              title={slide.titleEn}
+                                            >
+                                              <span
+                                                className={`read-hint ${isSlideRead(chapter.id, slide.id) ? 'is-read' : ''}`}
+                                                aria-hidden="true"
+                                              />
+                                              <span>{slide.titleEn}</span>
+                                              {showChinese && (
+                                                <span>{slide.titleZh}</span>
+                                              )}
+                                            </NavLink>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )}
                                 </li>
                               )
                             })}

@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react'
 import {
   BrowserRouter,
   Navigate,
+  Outlet,
   Route,
   Routes,
   useLocation,
@@ -11,10 +12,15 @@ import { Sidebar } from './components/Sidebar'
 import { DashboardPage } from './pages/DashboardPage'
 import { BookEntryPage } from './pages/BookEntryPage'
 import { ChapterPage } from './pages/ChapterPage'
+import { LoginPage } from './pages/LoginPage'
+import { AnalysisPage } from './pages/AnalysisPage'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import { ChineseLocaleProvider } from './context/ChineseLocaleContext'
+import { ReadHintsProvider, useReadHints } from './context/ReadHintsContext'
 import { getBook } from './data/books'
 import { getPartForChapter } from './data/chapters'
 import { saveCourseProgress } from './lib/courseProgress'
+import { useReadingTracker } from './hooks/useReadingTracker'
 
 function ProgressSync({
   bookId,
@@ -25,11 +31,22 @@ function ProgressSync({
   chapterId?: string
   slideId?: string
 }) {
+  const { refresh } = useReadHints(bookId)
+
   useEffect(() => {
     if (bookId && chapterId && slideId) {
       saveCourseProgress(bookId, chapterId, slideId)
     }
   }, [bookId, chapterId, slideId])
+
+  useReadingTracker({
+    bookId,
+    chapterId,
+    slideId,
+    onMarkedRead: () => {
+      void refresh()
+    },
+  })
 
   return null
 }
@@ -42,7 +59,22 @@ function LegacyChapterRedirect() {
   return <Navigate to={target} replace />
 }
 
-function AppLayout({ children }: { children: ReactNode }) {
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth()
+  const location = useLocation()
+
+  if (loading) {
+    return <div className="auth-loading">Loading…</div>
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  return <>{children}</>
+}
+
+function AppLayout() {
   const location = useLocation()
   const match = location.pathname.match(
     /^\/book\/([^/]+)\/chapter\/([^/]+)(?:\/([^/]+))?/,
@@ -56,17 +88,21 @@ function AppLayout({ children }: { children: ReactNode }) {
   const showSidebar = Boolean(book && book.kind === 'course' && chapterId)
 
   return (
-    <div className={`app-shell ${showSidebar ? '' : 'no-sidebar'}`.trim()}>
-      <ProgressSync bookId={bookId} chapterId={chapterId} slideId={slideId} />
-      {showSidebar && (
-        <Sidebar
-          bookId={bookId!}
-          activeChapterId={chapterId}
-          activeSlideId={slideId}
-        />
-      )}
-      <main className={`main-panel theme-${partTheme}`}>{children}</main>
-    </div>
+    <ReadHintsProvider bookId={bookId}>
+      <div className={`app-shell ${showSidebar ? '' : 'no-sidebar'}`.trim()}>
+        <ProgressSync bookId={bookId} chapterId={chapterId} slideId={slideId} />
+        {showSidebar && (
+          <Sidebar
+            bookId={bookId!}
+            activeChapterId={chapterId}
+            activeSlideId={slideId}
+          />
+        )}
+        <main className={`main-panel theme-${partTheme}`}>
+          <Outlet />
+        </main>
+      </div>
+    </ReadHintsProvider>
   )
 }
 
@@ -75,23 +111,33 @@ const routerBasename = import.meta.env.BASE_URL.replace(/\/$/, '') || undefined
 export default function App() {
   return (
     <BrowserRouter basename={routerBasename}>
-      <ChineseLocaleProvider>
-        <AppLayout>
+      <AuthProvider>
+        <ChineseLocaleProvider>
           <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/book/:bookId" element={<BookEntryPage />} />
+            <Route path="/login" element={<LoginPage />} />
             <Route
-              path="/book/:bookId/chapter/:chapterId/:slideId?"
-              element={<ChapterPage />}
-            />
-            <Route
-              path="/chapter/:chapterId/:slideId?"
-              element={<LegacyChapterRedirect />}
-            />
-            <Route path="*" element={<Navigate to="/" replace />} />
+              element={
+                <RequireAuth>
+                  <AppLayout />
+                </RequireAuth>
+              }
+            >
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="/book/:bookId" element={<BookEntryPage />} />
+              <Route
+                path="/book/:bookId/chapter/:chapterId/:slideId?"
+                element={<ChapterPage />}
+              />
+              <Route
+                path="/chapter/:chapterId/:slideId?"
+                element={<LegacyChapterRedirect />}
+              />
+              <Route path="/analysis" element={<AnalysisPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
           </Routes>
-        </AppLayout>
-      </ChineseLocaleProvider>
+        </ChineseLocaleProvider>
+      </AuthProvider>
     </BrowserRouter>
   )
 }

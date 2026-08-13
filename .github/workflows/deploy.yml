@@ -29,11 +29,13 @@ jobs:
 
       - name: Package release
         run: |
-          mkdir -p release/teaching/frontend/dist release/teaching/frontend/server release/teaching/nginx release/teaching/scripts
+          mkdir -p release/teaching/frontend/dist release/teaching/frontend/server release/teaching/backend release/teaching/nginx release/teaching/scripts
           rsync -a frontend/dist/ release/teaching/frontend/dist/
           rsync -a frontend/server/ release/teaching/frontend/server/
+          rsync -a --exclude node_modules --exclude .env backend/ release/teaching/backend/
           cp nginx/teaching.conf release/teaching/nginx/teaching.conf
           cp scripts/teaching-topic-image.service release/teaching/scripts/teaching-topic-image.service
+          cp scripts/teaching-api.service release/teaching/scripts/teaching-api.service
           tar -czf teaching.tar.gz -C release teaching
 
       - name: Upload to server
@@ -56,26 +58,41 @@ jobs:
           script: |
             set -e
             mkdir -p "$HOME/teaching"
+            if [ -f "$HOME/teaching/backend/.env" ]; then
+              cp "$HOME/teaching/backend/.env" /tmp/teaching-backend.env.bak
+            fi
             tar -xzf /tmp/teaching.tar.gz -C "$HOME"
+            if [ -f /tmp/teaching-backend.env.bak ]; then
+              mkdir -p "$HOME/teaching/backend"
+              mv /tmp/teaching-backend.env.bak "$HOME/teaching/backend/.env"
+            fi
             mkdir -p "$HOME/controller/nginx/services.d"
             cp "$HOME/teaching/nginx/teaching.conf" "$HOME/controller/nginx/services.d/teaching.conf"
             mkdir -p "$HOME/.config/systemd/user"
             cp "$HOME/teaching/scripts/teaching-topic-image.service" "$HOME/.config/systemd/user/teaching-topic-image.service"
+            cp "$HOME/teaching/scripts/teaching-api.service" "$HOME/.config/systemd/user/teaching-api.service"
             if sudo -n loginctl enable-linger "$(whoami)" 2>/dev/null; then
               echo "Enabled systemd user linger for $(whoami)"
             elif loginctl enable-linger 2>/dev/null; then
               echo "Enabled systemd user linger"
             else
-              echo "WARNING: could not enable linger; topic-image may stop after logout"
+              echo "WARNING: could not enable linger; services may stop after logout"
             fi
+            cd "$HOME/teaching/backend"
+            npm ci --omit=dev || npm install --omit=dev
             systemctl --user daemon-reload
             systemctl --user enable --now teaching-topic-image.service
             systemctl --user restart teaching-topic-image.service
+            systemctl --user enable --now teaching-api.service
+            systemctl --user restart teaching-api.service
             sleep 1
             systemctl --user --quiet is-active teaching-topic-image.service
+            systemctl --user --quiet is-active teaching-api.service
             curl -fsS -m 20 "http://127.0.0.1:9010/teaching/api/topic-image?q=healthcheck" >/dev/null
+            curl -fsS -m 10 "http://127.0.0.1:9011/teaching/api/auth/me" >/dev/null || true
             chmod o+x "$HOME" || true
             chmod -R a+rX "$HOME/teaching" || true
+            chmod 600 "$HOME/teaching/backend/.env" 2>/dev/null || true
             if sudo -n true 2>/dev/null; then
               sudo nginx -t
               sudo systemctl reload nginx

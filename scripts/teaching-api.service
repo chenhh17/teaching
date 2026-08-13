@@ -1,0 +1,16 @@
+[Unit]
+Description=teaching course API
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/teaching/backend
+EnvironmentFile=%h/teaching/backend/.env
+ExecStart=/usr/bin/env node %h/teaching/backend/src/server.mjs
+Environment=PORT=9011
+Restart=always
+RestartSec=3
+MemoryMax=180M
+
+[Install]
+WantedBy=default.target
