@@ -213,7 +213,6 @@ export function buildPeriodBars(
     today,
   )
   const thisWeek = isoWeekStart(today)
-  const size = mode === 'day' ? DAY_WINDOW : WEEK_WINDOW
 
   const items: PeriodBar[] = []
   if (mode === 'day') {
