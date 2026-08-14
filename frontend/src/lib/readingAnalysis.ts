@@ -37,11 +37,18 @@ export type ChapterRow = {
   readPages: number
 }
 
+export type DayTimeRow = {
+  date: string
+  seconds?: number
+  focusedMinutes: number
+}
+
 export type AnalysisPayload = {
   totals: AnalysisTotals
   byBook: BookRow[]
   byPart: PartRow[]
   byChapter: ChapterRow[]
+  byDay?: DayTimeRow[]
 }
 
 export type ProgressStatus = 'empty' | 'progress' | 'done'
@@ -97,6 +104,7 @@ export type ReadingView = {
   parts: PartProgress[]
   chapters: ChapterProgress[]
   maxPartMinutes: number
+  byDay: DayTimeRow[]
 }
 
 function clampPercent(read: number, total: number) {
@@ -141,6 +149,121 @@ export function formatRelativeTime(iso?: string | null) {
   const days = Math.floor(hours / 24)
   if (days < 14) return `${days}d ago`
   return new Date(iso).toLocaleDateString()
+}
+
+export function todayShanghai() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date())
+}
+
+export function addDays(ymd: string, days: number) {
+  const [year, month, day] = ymd.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day + days))
+  return date.toISOString().slice(0, 10)
+}
+
+export function isoWeekStart(ymd: string) {
+  const [year, month, day] = ymd.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  const weekday = date.getUTCDay()
+  const delta = weekday === 0 ? -6 : 1 - weekday
+  date.setUTCDate(date.getUTCDate() + delta)
+  return date.toISOString().slice(0, 10)
+}
+
+export function weekdayIndex(ymd: string) {
+  const [year, month, day] = ymd.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay()
+}
+
+export function monthDay(ymd: string) {
+  const [, month, day] = ymd.split('-')
+  return `${Number(month)}/${Number(day)}`
+}
+
+export const DAY_WINDOW = 7
+export const WEEK_WINDOW = 8
+
+export type PeriodMode = 'day' | 'week'
+
+export type PeriodBar = {
+  key: string
+  start: string
+  end: string
+  minutes: number
+  isCurrent: boolean
+}
+
+export function buildPeriodBars(
+  byDay: DayTimeRow[],
+  mode: PeriodMode,
+  offset: number,
+  today: string,
+) {
+  const minutesByDate = new Map<string, number>()
+  for (const row of byDay) {
+    minutesByDate.set(row.date, row.focusedMinutes)
+  }
+  const earliest = byDay.reduce(
+    (min, row) => (row.date < min ? row.date : min),
+    today,
+  )
+  const thisWeek = isoWeekStart(today)
+  const size = mode === 'day' ? DAY_WINDOW : WEEK_WINDOW
+
+  const items: PeriodBar[] = []
+  if (mode === 'day') {
+    const end = addDays(today, -offset * DAY_WINDOW)
+    const start = addDays(end, -(DAY_WINDOW - 1))
+    for (let i = 0; i < DAY_WINDOW; i += 1) {
+      const date = addDays(start, i)
+      items.push({
+        key: date,
+        start: date,
+        end: date,
+        minutes: minutesByDate.get(date) ?? 0,
+        isCurrent: date === today,
+      })
+    }
+    return {
+      items,
+      totalMinutes: items.reduce((sum, item) => sum + item.minutes, 0),
+      start,
+      end,
+      canPrev: earliest < start,
+      canNext: offset > 0,
+    }
+  }
+
+  const endWeek = addDays(thisWeek, -offset * WEEK_WINDOW * 7)
+  const startWeek = addDays(endWeek, -(WEEK_WINDOW - 1) * 7)
+  for (let i = 0; i < WEEK_WINDOW; i += 1) {
+    const start = addDays(startWeek, i * 7)
+    const end = addDays(start, 6)
+    let minutes = 0
+    for (let d = 0; d < 7; d += 1) {
+      minutes += minutesByDate.get(addDays(start, d)) ?? 0
+    }
+    items.push({
+      key: start,
+      start,
+      end,
+      minutes,
+      isCurrent: start === thisWeek,
+    })
+  }
+  return {
+    items,
+    totalMinutes: items.reduce((sum, item) => sum + item.minutes, 0),
+    start: startWeek,
+    end: addDays(endWeek, 6),
+    canPrev: earliest < startWeek,
+    canNext: offset > 0,
+  }
 }
 
 export function courseSlideCount() {
@@ -291,5 +414,6 @@ export function buildReadingView(data: AnalysisPayload): ReadingView {
     parts: partViews,
     chapters: chapterViews,
     maxPartMinutes,
+    byDay: data.byDay ?? [],
   }
 }

@@ -35,3 +35,10 @@ CREATE TABLE IF NOT EXISTS focus_time (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(user_id, book_id, chapter_id, slide_id)
 );
+
+CREATE TABLE IF NOT EXISTS focus_daily (
+  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day DATE NOT NULL,
+  seconds INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, day)
+);

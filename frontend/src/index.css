@@ -2556,6 +2556,107 @@ button {
   font-size: 0.8rem;
 }
 
+.analysis-period-board {
+  display: grid;
+  gap: 10px;
+}
+
+.analysis-period-nav {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
+  gap: 8px;
+  align-items: center;
+}
+
+.analysis-period-nav .analysis-section-note {
+  text-align: center;
+}
+
+.analysis-period-shift {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--header, #0f172a);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.analysis-period-shift:disabled {
+  color: #cbd5e1;
+  cursor: default;
+}
+
+.analysis-period-chart {
+  display: grid;
+  gap: 8px;
+  align-items: end;
+}
+
+.analysis-period-chart.is-day {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.analysis-period-chart.is-week {
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+}
+
+.analysis-period-col {
+  display: grid;
+  grid-template-rows: 1.1em 108px auto auto;
+  gap: 4px;
+  justify-items: center;
+  min-width: 0;
+}
+
+.analysis-period-value {
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink, #1e293b);
+  white-space: nowrap;
+}
+
+.analysis-period-track {
+  width: 100%;
+  max-width: 36px;
+  height: 108px;
+  display: flex;
+  align-items: flex-end;
+  background: #e2e8f0;
+}
+
+.analysis-period-fill {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  background: #2563eb;
+}
+
+.analysis-period-col.is-current .analysis-period-track {
+  background: #cbd5e1;
+}
+
+.analysis-period-col.is-current .analysis-period-fill {
+  background: #1d4ed8;
+}
+
+.analysis-period-col.is-current strong {
+  color: #1d4ed8;
+}
+
+.analysis-period-col strong {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--header, #0f172a);
+}
+
+.analysis-period-col em {
+  font-style: normal;
+  font-size: 0.62rem;
+  color: var(--muted, #64748b);
+}
+
 .analysis-time-chart {
   list-style: none;
   margin: 0;
@@ -3007,6 +3108,18 @@ button {
   .analysis-chapter-line .analysis-meter,
   .analysis-chapter-time {
     display: none;
+  }
+
+  .analysis-period-value {
+    display: none;
+  }
+
+  .analysis-period-col {
+    grid-template-rows: 88px auto auto;
+  }
+
+  .analysis-period-track {
+    height: 88px;
   }
 
   .analysis-table {

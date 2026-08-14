@@ -20,6 +20,15 @@ export async function migrate() {
   const schemaPath = path.join(__dirname, '..', 'sql', 'schema.sql')
   const sql = fs.readFileSync(schemaPath, 'utf8')
   await pool.query(sql)
+  await pool.query(
+    `INSERT INTO focus_daily (user_id, day, seconds)
+     SELECT user_id,
+            (timezone('Asia/Shanghai', updated_at))::date AS day,
+            SUM(seconds)::int
+     FROM focus_time
+     GROUP BY user_id, day
+     ON CONFLICT (user_id, day) DO NOTHING`,
+  )
 }
 
 export async function ensureAdmin() {

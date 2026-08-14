@@ -2,14 +2,20 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useChineseLocale } from '../context/ChineseLocaleContext'
 import {
+  buildPeriodBars,
   buildReadingView,
   courseSlideCount,
   formatDuration,
   formatPercent,
   formatRelativeTime,
+  monthDay,
+  todayShanghai,
+  weekdayIndex,
   type AnalysisPayload,
   type ChapterProgress,
+  type DayTimeRow,
   type PartProgress,
+  type PeriodMode,
   type ProgressStatus,
 } from '../lib/readingAnalysis'
 
@@ -53,6 +59,117 @@ function TimeBar({
   return (
     <div className="analysis-timebar" aria-hidden="true">
       <span className="analysis-timebar-fill" style={{ width: `${width}%` }} />
+    </div>
+  )
+}
+
+function weekdayLabel(ymd: string, zh: boolean) {
+  const names = zh
+    ? ['日', '一', '二', '三', '四', '五', '六']
+    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  return names[weekdayIndex(ymd)]
+}
+
+function TimeOverPeriod({
+  byDay,
+  zh,
+}: {
+  byDay: DayTimeRow[]
+  zh: boolean
+}) {
+  const [mode, setMode] = useState<PeriodMode>('day')
+  const [offset, setOffset] = useState(0)
+  const today = todayShanghai()
+  const period = useMemo(
+    () => buildPeriodBars(byDay, mode, offset, today),
+    [byDay, mode, offset, today],
+  )
+  const maxMinutes = Math.max(0.001, ...period.items.map((item) => item.minutes))
+  const hasTime = byDay.some((row) => row.focusedMinutes > 0)
+
+  return (
+    <div className="analysis-period-board">
+      <div className="analysis-section-head">
+        <h2>{zh ? '阅读时间' : 'Reading time'}</h2>
+        <div className="analysis-filter">
+          <button
+            type="button"
+            className={mode === 'day' ? 'active' : ''}
+            onClick={() => {
+              setMode('day')
+              setOffset(0)
+            }}
+          >
+            {zh ? '按日' : 'Day'}
+          </button>
+          <button
+            type="button"
+            className={mode === 'week' ? 'active' : ''}
+            onClick={() => {
+              setMode('week')
+              setOffset(0)
+            }}
+          >
+            {zh ? '按周' : 'Week'}
+          </button>
+        </div>
+      </div>
+      <div className="analysis-period-nav">
+        <button
+          type="button"
+          className="analysis-period-shift"
+          disabled={!period.canPrev}
+          onClick={() => setOffset((value) => value + 1)}
+        >
+          ←
+        </button>
+        <p className="analysis-section-note">
+          {`${monthDay(period.start)} – ${monthDay(period.end)} · ${formatDuration(period.totalMinutes)}`}
+        </p>
+        <button
+          type="button"
+          className="analysis-period-shift"
+          disabled={!period.canNext}
+          onClick={() => setOffset((value) => Math.max(0, value - 1))}
+        >
+          →
+        </button>
+      </div>
+      {!hasTime ? (
+        <p className="analysis-empty">
+          {zh ? '还没有按日记录的阅读时间。' : 'No daily reading time yet.'}
+        </p>
+      ) : (
+        <div
+          className={`analysis-period-chart is-${mode}`}
+          aria-label={zh ? '阅读时间柱状图' : 'Reading time bar chart'}
+        >
+          {period.items.map((item) => {
+            const height =
+              item.minutes <= 0 ? 0 : Math.max(6, (item.minutes / maxMinutes) * 100)
+            const label =
+              mode === 'day' ? weekdayLabel(item.start, zh) : monthDay(item.start)
+            const sub =
+              mode === 'day' ? monthDay(item.start) : monthDay(item.end)
+            return (
+              <div
+                key={item.key}
+                className={`analysis-period-col${item.isCurrent ? ' is-current' : ''}${item.minutes > 0 ? ' has-time' : ''}`}
+                title={`${item.start}${mode === 'week' ? ` – ${item.end}` : ''} · ${formatDuration(item.minutes)}`}
+              >
+                <span className="analysis-period-value">
+                  {item.minutes > 0 ? formatDuration(item.minutes) : ''}
+                </span>
+                <div className="analysis-period-track">
+                  <span className="analysis-period-fill" style={{ height: `${height}%` }} />
+                </div>
+                <strong>{label}</strong>
+                <em>{sub}</em>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -313,6 +430,10 @@ export function AnalysisDashboard({ data }: Props) {
         {view.insightEn}
         {showChinese && <span>{view.insightZh}</span>}
       </p>
+
+      <section className="analysis-section" data-report="calendar">
+        <TimeOverPeriod byDay={view.byDay} zh={showChinese} />
+      </section>
 
       <section className="analysis-section" data-report="time">
         <h2>{showChinese ? '时间分布' : 'Time by part'}</h2>

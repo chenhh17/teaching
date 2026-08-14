@@ -45,6 +45,13 @@ export async function handleHeartbeat(user, body) {
        updated_at = now()`,
     [user.id, bookId, partId, chapterId, slideId, focusedSeconds],
   )
+  await query(
+    `INSERT INTO focus_daily (user_id, day, seconds)
+     VALUES ($1, (timezone('Asia/Shanghai', now()))::date, $2)
+     ON CONFLICT (user_id, day)
+     DO UPDATE SET seconds = focus_daily.seconds + EXCLUDED.seconds`,
+    [user.id, focusedSeconds],
+  )
 
   return { status: 200, body: { ok: true, added: focusedSeconds } }
 }
@@ -106,6 +113,15 @@ export async function buildAnalysis(userId) {
        (SELECT MAX(updated_at) FROM focus_time WHERE user_id = $1),
        (SELECT MAX(first_read_at) FROM page_reads WHERE user_id = $1)
      ) AS last_active`,
+    [userId],
+  )
+
+  const daily = await query(
+    `SELECT day::text AS day, seconds::int AS seconds
+     FROM focus_daily
+     WHERE user_id = $1
+       AND day >= (timezone('Asia/Shanghai', now()))::date - 119
+     ORDER BY day`,
     [userId],
   )
 
@@ -202,6 +218,11 @@ export async function buildAnalysis(userId) {
     byBook,
     byPart,
     byChapter,
+    byDay: daily.rows.map((row) => ({
+      date: row.day,
+      seconds: row.seconds,
+      focusedMinutes: round1(row.seconds / 60),
+    })),
   }
 }
 
